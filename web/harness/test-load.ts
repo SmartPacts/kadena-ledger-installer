@@ -65,27 +65,23 @@ try {
 
   const loader = new AppLoader(session);
 
-  try {
-    await loader.deleteApp(APP_NAME);
-    console.log("  removed the existing app");
-  } catch {
-    console.log("  no existing app to remove");
-  }
-
-  await loader.createApp(params);
-  console.log("  space reserved\n");
-
   let lastPercent = -1;
-  await loader.load(image, ({ loaded, total }) => {
-    const percent = Math.floor((loaded / total) * 100);
-    if (percent !== lastPercent && percent % 10 === 0) {
-      console.log(`    ${percent}%  (${loaded}/${total} bytes)`);
-      lastPercent = percent;
-    }
+  await loader.installApp(APP_NAME, image, params, {
+    onDeleted: (existed) =>
+      console.log(existed ? "  removed the existing app" : "  no existing app to remove"),
+    onProgress: ({ loaded, total }) => {
+      const percent = Math.floor((loaded / total) * 100);
+      if (percent !== lastPercent && percent % 10 === 0) {
+        console.log(`    ${percent}%  (${loaded}/${total} bytes)`);
+        lastPercent = percent;
+      }
+    },
+    onFinalising: () => console.log("\n  streaming done — finalising (approve on the device)"),
   });
 
-  console.log("\n  LOAD COMPLETE");
-  console.log("\n  The device displayed an application hash. It must read:");
+  console.log("\n  INSTALL COMPLETE");
+  console.log("\n  While finalising, the device showed an application hash.");
+  console.log("  Check what it displayed against this — do not assume it matched:");
   console.log(`    ${EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!.slice(0, 4).join(" ")}`);
   console.log(`    ${EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!.slice(4).join(" ")}`);
 } finally {

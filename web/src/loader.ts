@@ -101,6 +101,39 @@ export class AppLoader {
   }
 
   /**
+   * Install an application: remove any existing copy, reserve space, stream, finalise.
+   *
+   * Exposed as one call because the steps are not independent. Streaming without
+   * finalising looks like complete success — every command returns 0x9000 and the CRC
+   * passes — while the device quietly discards the app, and the delete has already
+   * happened, so the device is left with nothing. Doing this by hand is how that bug
+   * reached real hardware; there is no legitimate reason to run a partial sequence.
+   */
+  async installApp(
+    appName: string,
+    image: IntelHex,
+    params: LoadParameters,
+    hooks?: {
+      onDeleted?: (existed: boolean) => void;
+      onProgress?: (progress: LoadProgress) => void;
+      onFinalising?: () => void;
+    },
+  ): Promise<void> {
+    let existed = true;
+    try {
+      await this.deleteApp(appName);
+    } catch {
+      existed = false; // nothing installed under that name
+    }
+    hooks?.onDeleted?.(existed);
+
+    await this.createApp(params);
+    await this.load(image, hooks?.onProgress);
+    hooks?.onFinalising?.();
+    await this.commit();
+  }
+
+  /**
    * Remove an app by name. A device that does not have it may reject this; that is
    * not a failure of the install, so the caller decides what to do about it.
    */
@@ -155,6 +188,25 @@ export class AppLoader {
       await this.flushSegment();
       await this.crcSegment(0, area.data.length, expectedCrc);
     }
+  }
+
+  /**
+   * Finalise the application.
+   *
+   * Without this the device holds everything that was streamed and then discards it:
+   * the CRC passes, the transfer looks like a complete success, and no app appears.
+   * Because a load is preceded by a delete, skipping it leaves the device with no app
+   * at all — which is exactly what happened the first time this ran on hardware.
+   *
+   * This is also the point at which the device shows the application details and its
+   * hash and asks the user to confirm.
+   */
+  async commit(signature?: Uint8Array): Promise<void> {
+    const body =
+      signature && signature.length > 0
+        ? concat(Uint8Array.of(0x09, signature.length), signature)
+        : Uint8Array.of(0x09);
+    await this.session.exchange(0x00, 0x00, 0x00, body);
   }
 
   private async selectSegment(baseAddress: number): Promise<void> {
