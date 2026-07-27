@@ -519,24 +519,70 @@ def install_udev_rules() -> int:
 # --------------------------------------------------------------------------------------
 
 
+def hash_in_blocks(digest: str, per_line: int = 4) -> str:
+    """A 64-character hash is hard to compare against a tiny scrolling screen.
+
+    Splitting it into blocks makes a character-level comparison something a person
+    will actually finish instead of abandoning after the first few characters.
+    """
+    blocks = [digest[i:i + 8] for i in range(0, len(digest), 8)]
+    return "\n".join(
+        "  " + " ".join(blocks[i:i + per_line]) for i in range(0, len(blocks), per_line)
+    )
+
+
+DEVICE_SCREENS = [
+    ('"Allow unknown manager?"', "approve", False),
+    ("Manager public key", "see the note below", False),
+    ("App name and version", f"should say Kadena, {APP_VERSION}", False),
+    ("Code identifier", "NOT the one you are checking", False),
+    ("Full hash", "THIS IS THE ONE THAT MATTERS", True),
+    ('"Install app Kadena?"', "approve only after you have read screen 5", False),
+]
+
+
+def screen_list() -> str:
+    """Render the device-screen walkthrough, padded on the plain text.
+
+    Padding has to be computed from the uncoloured label — measuring a string that
+    already contains escape codes silently misaligns the whole block.
+    """
+    width = max(len(label) for label, _, _ in DEVICE_SCREENS)
+    lines = []
+    for n, (label, note, emphasise) in enumerate(DEVICE_SCREENS, 1):
+        pad = " " * (width - len(label))
+        text, hint = (_c("1", label), _c("1", note)) if emphasise else (label, note)
+        lines.append(f"  {n}. {text}{pad}  ->  {hint}")
+    return "\n".join(lines)
+
+
 def show_what_will_happen() -> None:
     banner(
         "READ THIS BEFORE YOU CONTINUE",
         f"""
 About to install the Kadena app, version {APP_VERSION}, onto a {SUPPORTED_DEVICE_NAME}.
 
-Your Ledger will ask you to approve the installation, and while it does, it will show
-a long line of letters and numbers on its own screen. It must be exactly this:
+Your device will now show a series of screens. Step through them with the right-hand
+button. THEY ARRIVE IN THIS ORDER:
 
-  {_c('1;32', EXPECTED_DEVICE_HASH)}
+{screen_list()}
 
-Compare it character by character. Your Ledger's screen is the only thing here that
-cannot be lied to by a compromised computer. If those characters differ ANYWHERE,
-reject the installation on the device and tell us at:
-  https://github.com/SmartPacts/kadena-ledger-installer/issues
+{_c('1', 'The Full hash on screen 5 must read exactly:')}
 
-Two more things worth knowing:
+{_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
 
+Take your time. The device waits as long as you need, so read every block — not just
+the beginning and the end. Photograph the screen and compare it here if that is easier.
+
+Your Ledger's screen is the only thing in this process that cannot be lied to by a
+compromised computer. If those characters differ ANYWHERE, reject on the device and
+tell us: https://github.com/SmartPacts/kadena-ledger-installer/issues
+
+Three more things worth knowing:
+
+  - {_c('1', 'The manager public key (screen 2) is DIFFERENT every single time.')} That is
+    normal and is not a warning sign: a fresh one-time key is generated for each run.
+    The Full hash is the value that must never change.
   - This app is not yet distributed by Ledger, so your device will warn you that it
     is not a Ledger-reviewed app. That warning is expected and correct.
   - This does not touch your recovery phrase, your PIN, or your device firmware, and
@@ -569,18 +615,27 @@ def confirm_device_hash() -> bool:
     banner(
         "LAST STEP - AND THE ONLY ONE THAT REALLY MATTERS",
         f"""
-While installing, your Ledger displayed a hash on its own screen. It should have been:
+The "Full hash" screen on your device should have read exactly:
 
-  {_c('1;32', EXPECTED_DEVICE_HASH)}
+{_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
+
+Not the "Code identifier" screen, and not the manager public key — the Full hash.
 """.rstrip(),
     )
     print(
-        "\nIf you did not get a good look, that is fine — you can check it any time by\n"
-        "reinstalling, or by asking us how in an issue. Do not guess."
+        "\nIf you did not get a good look, answer 'no' or 'unsure' rather than guessing.\n"
+        "Running this installer again simply redisplays the hash; it is harmless and takes\n"
+        "about a minute. An unread hash is an unverified install."
     )
-    answer = input(
-        f"\n{_c('1', 'Did the hash on the device match, exactly?')} (yes / no / unsure): "
-    ).strip().lower()
+    try:
+        answer = input(
+            f"\n{_c('1', 'Did the hash on the device match, exactly?')} (yes / no / unsure): "
+        ).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        # No usable stdin (piped, or the window was closed). Never assume "yes" —
+        # an unanswered verification is an unverified install.
+        print("\n\nNo answer given, so this install counts as UNVERIFIED.")
+        answer = "unsure"
 
     if answer == "yes":
         print(

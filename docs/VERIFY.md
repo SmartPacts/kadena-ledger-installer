@@ -1,19 +1,47 @@
 # How to know you installed the real thing
 
-There is exactly one check that matters, and it takes ten seconds.
+There is exactly one check that matters, and it takes about a minute.
 
 ## The check
 
-While the app installs, your Ledger displays a long line of letters and numbers on its
-own screen. For Kadena app **v1.3.0** it must read:
+While installing, your device steps through several screens. They arrive in this order:
+
+1. **"Allow unknown manager?"** — approve
+2. **Manager public key** — see the warning below
+3. **App name and version** — should say Kadena, 1.3.0
+4. **Code identifier** — a different hash; **not** the one you are checking
+5. **Full hash** — **this is the one that matters**
+6. **"Install app Kadena?"** — approve only after you have read screen 5
+
+For Kadena app **v1.3.0**, the Full hash must read exactly:
 
 ```
-068f376be6115e1769952fabb61020ae5070867c9b2299c259f6947c5b5ce1db
+068f376b e6115e17 69952fab b61020ae
+5070867c 9b2299c2 59f6947c 5b5ce1db
 ```
 
-Compare it against the screen. If it matches, the correct app is on your device. If it
-differs anywhere at all, reject the installation on the device and
+That is the single value `068f376be6115e1769952fabb61020ae5070867c9b2299c259f6947c5b5ce1db`,
+split into blocks — comparing 64 unbroken characters on a small screen is how people end up
+checking the first four and giving up.
+
+Read every block, not only the start and the end. The device waits as long as you need;
+there is no timeout on that screen. Photographing it and comparing at your desk is a
+perfectly good approach.
+
+If it matches, the correct app is on your device. If it differs anywhere at all, reject the
+installation on the device and
 [report it](https://github.com/SmartPacts/kadena-ledger-installer/issues).
+
+> **The manager public key changes every single time.** Screen 2 shows a different value on
+> every run, because a fresh one-time key is generated for each installation session. That is
+> normal and is **not** a sign of tampering. Only the Full hash must stay constant.
+>
+> This is worth stating plainly, because a value that changes for innocent reasons will
+> otherwise teach you to ignore all of these screens — and that habit is the real danger.
+
+> **If you did not get a good look, say so.** Answer `no` or `unsure` at the prompt rather
+> than guessing. Running the installer again simply redisplays the hash; it is harmless.
+> An unread hash is an unverified install, and the tool records it that way on purpose.
 
 ## Why this one check is enough
 

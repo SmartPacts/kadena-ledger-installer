@@ -72,20 +72,34 @@ then unplug and replug it.
 
 ### 4. Watch your device, and check the hash
 
-Your Ledger will ask you to approve the installation. It will also warn you that this
-app is not reviewed by Ledger — **that warning is correct and expected**, because the
-app is not in their catalogue yet.
+Your Ledger will ask you to approve the installation, and will warn you that this app is
+not reviewed by Ledger — **that warning is correct and expected**, because the app is not
+in their catalogue yet.
 
-While it installs, your Ledger shows a long line of letters and numbers on its own
-screen. **It must read exactly:**
+Step through the screens with the right-hand button. They come in this order, and the
+**fifth** one is the one you care about:
+
+1. "Allow unknown manager?" — approve
+2. Manager public key — **this is different every run; that is normal**
+3. App name and version — Kadena, 1.3.0
+4. Code identifier — a different hash, not the one you are checking
+5. **Full hash** — **the one that matters**
+6. "Install app Kadena?" — approve only after reading screen 5
+
+The Full hash must read exactly:
 
 ```
-068f376be6115e1769952fabb61020ae5070867c9b2299c259f6947c5b5ce1db
+068f376b e6115e17 69952fab b61020ae
+5070867c 9b2299c2 59f6947c 5b5ce1db
 ```
 
+Read every block, not just the first and last. The device waits as long as you need.
 This is the one step that genuinely matters, and
 [this page explains why](docs/VERIFY.md). If the characters differ anywhere, reject the
 installation on the device and [tell us](https://github.com/SmartPacts/kadena-ledger-installer/issues).
+
+If you did not get a good look, answer `no` or `unsure` at the prompt instead of guessing.
+Running the installer again just shows you the hash a second time.
 
 ### 5. Done
 
