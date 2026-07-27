@@ -8,5 +8,12 @@
   "dependencies": {
     "@noble/curves": "^1.9.0",
     "@noble/hashes": "^1.8.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  },
+  "scripts": {
+    "build:demo": "node scripts/build-demo.mjs",
+    "serve:demo": "node scripts/serve-demo.mjs"
   }
 }

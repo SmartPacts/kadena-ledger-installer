@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Install the Kadena app on your Ledger</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 2rem 1rem; background: #0f1115; color: #e7e9ee;
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 44rem; margin: 0 auto; }
+      h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+      .sub { color: #9aa3b2; margin: 0 0 2rem; }
+      .card { background: #171a21; border: 1px solid #262b36; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+      .hidden { display: none; }
+      button {
+        font: inherit; font-weight: 600; padding: .7rem 1.25rem; border-radius: 8px;
+        border: 0; background: #4f7cff; color: #fff; cursor: pointer;
+      }
+      button:disabled { opacity: .5; cursor: default; }
+      button.secondary { background: #262b36; color: #e7e9ee; }
+      button.danger { background: #6b2230; color: #ffd7dd; }
+      ul { padding-left: 1.2rem; }
+      /* The verification panel. Deliberately the loudest thing on the page: it is the
+         only step that actually protects the user. */
+      #verify { border-color: #7a6320; background: #1d1a12; }
+      #verify.attention { border-color: #e0b53c; box-shadow: 0 0 0 3px rgba(224,181,60,.15); }
+      /* Blocks WRAP; they must never scroll sideways. A hash that runs off the edge
+         invites comparing only the visible half without noticing the rest. */
+      #expected {
+        display: flex; flex-wrap: wrap; gap: .35rem .9rem;
+        font: 700 1.15rem/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .06em; color: #ffd97a; margin: .75rem 0;
+      }
+      #expected span { white-space: nowrap; }
+      .track { height: 8px; background: #262b36; border-radius: 99px; overflow: hidden; margin: 1rem 0; }
+      #bar { height: 100%; width: 0; background: #4f7cff; transition: width .2s; }
+      #log {
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        max-height: 12rem; overflow-y: auto; color: #9aa3b2;
+      }
+      .line.ok { color: #7fd18b; } .line.warn { color: #ffd97a; } .line.err { color: #ff9aa8; white-space: pre-wrap; }
+      .outcome { padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+      .outcome.ok { background: #12251a; color: #b8f0c4; }
+      .outcome.err { background: #2a1418; color: #ffc9d1; }
+      a { color: #8fb0ff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Install the Kadena app on your Ledger</h1>
+      <p class="sub">Nano S Plus only · app version 1.3.0</p>
+
+      <section id="unsupported" class="card hidden">
+        <strong>This browser cannot talk to USB devices.</strong>
+        <p>Use Chrome, Edge or Brave on a desktop computer. Firefox and Safari do not
+        support the connection this needs.</p>
+      </section>
+
+      <section id="intro" class="card">
+        <p>Before you start:</p>
+        <ul>
+          <li>Plug the Ledger in directly — not through a hub or monitor.</li>
+          <li>Unlock it and leave it on the home screen.</li>
+          <li><strong>Close Ledger Live completely</strong> — it holds the connection.</li>
+        </ul>
+        <p>You will <strong>never</strong> be asked for your recovery phrase. Anything that
+        asks for your 24 words is a scam, including anything claiming to be us.</p>
+        <p><button id="connect">Connect Ledger and install</button></p>
+      </section>
+
+      <section id="verify" class="card hidden">
+        <strong>Check this on your device</strong>
+        <p id="verifyLead">Your device will show an application hash and wait for you to
+        approve. It must read exactly:</p>
+        <div id="expected"></div>
+        <p>Compare every block — not just the start and the end — and only then approve.
+        The screen you want is labelled <strong>“Full hash”</strong>; the “Code identifier”
+        screen shows a different value, and the manager public key changes on every run,
+        which is normal. If anything differs, reject it on the device.</p>
+      </section>
+
+      <section id="progress" class="card hidden">
+        <div class="track"><div id="bar"></div></div>
+        <div id="log"></div>
+        <p><button id="retry" class="secondary hidden">Start again</button></p>
+      </section>
+
+      <section id="confirm" class="card hidden">
+        <strong>Did the hash on your device match, exactly?</strong>
+        <p>
+          <button id="matched">Yes, it matched</button>
+          <button id="mismatched" class="danger">No, or I did not see it</button>
+        </p>
+      </section>
+
+      <div id="outcome"></div>
+    </main>
+    <script type="module" src="./bundle.js"></script>
+  </body>
+</html>
