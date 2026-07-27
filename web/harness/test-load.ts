@@ -76,14 +76,20 @@ try {
         lastPercent = percent;
       }
     },
-    onFinalising: () => console.log("\n  streaming done — finalising (approve on the device)"),
+    // Fires immediately BEFORE the device is asked to finalise, so the expected value
+    // is on screen while the device shows its own and waits. Printing it afterwards
+    // would mean approving first and checking second, which is not a check at all.
+    onFinalising: () => {
+      const blocks = EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!;
+      console.log("\n  Streaming done. The device is about to show the application");
+      console.log("  hash and ask you to approve. It must read:\n");
+      console.log(`    ${blocks.slice(0, 4).join(" ")}`);
+      console.log(`    ${blocks.slice(4).join(" ")}`);
+      console.log("\n  Compare it on the device BEFORE approving. Reject if it differs.");
+    },
   });
 
   console.log("\n  INSTALL COMPLETE");
-  console.log("\n  While finalising, the device showed an application hash.");
-  console.log("  Check what it displayed against this — do not assume it matched:");
-  console.log(`    ${EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!.slice(0, 4).join(" ")}`);
-  console.log(`    ${EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!.slice(4).join(" ")}`);
 } finally {
   await transport.close?.();
 }
