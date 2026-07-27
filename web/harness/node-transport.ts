@@ -6,22 +6,48 @@
  */
 
 import { createRequire } from "node:module";
+import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 import type { Transport } from "../src/transport.ts";
 import { StatusError } from "../src/transport.ts";
 
+const PACKAGE = "@ledgerhq/hw-transport-node-hid";
+
 /**
- * Where to resolve the native HID transport from. Set HID_TRANSPORT_FROM to a
- * package.json whose dependency tree contains @ledgerhq/hw-transport-node-hid;
- * otherwise normal resolution from this file is used.
+ * Places to look for the native HID transport, in order. This package deliberately
+ * does not depend on it — a native build has no business in something destined for a
+ * browser bundle — so the harness borrows it from a workspace that already has it.
+ * Override with HID_TRANSPORT_FROM=<path to a package.json>.
  */
-const RESOLVE_FROM = process.env.HID_TRANSPORT_FROM ?? import.meta.url;
+function resolveCandidates(): string[] {
+  const candidates = [];
+  if (process.env.HID_TRANSPORT_FROM) candidates.push(process.env.HID_TRANSPORT_FROM);
+  candidates.push(import.meta.url);
+  candidates.push(pathToFileURL(`${homedir()}/enterprise/ledger-signer/packages/cli/package.json`).href);
+  return candidates;
+}
+
+function loadTransportModule(): { module: any; require: NodeRequire } {
+  const tried: string[] = [];
+  for (const from of resolveCandidates()) {
+    try {
+      const require = createRequire(from);
+      return { module: require(PACKAGE), require };
+    } catch {
+      tried.push(from);
+    }
+  }
+  throw new Error(
+    `could not find ${PACKAGE}.\nLooked in:\n  ${tried.join("\n  ")}\n` +
+      `Point HID_TRANSPORT_FROM at a package.json whose dependencies include it.`,
+  );
+}
 
 export async function openNodeTransport(): Promise<Transport> {
-  const require = createRequire(RESOLVE_FROM);
-  const mod = require("@ledgerhq/hw-transport-node-hid");
+  const { module: mod, require } = loadTransportModule();
   const TransportNodeHid = mod.default ?? mod;
   try {
-    const inner = createRequire(require.resolve("@ledgerhq/hw-transport-node-hid"));
+    const inner = createRequire(require.resolve(PACKAGE));
     inner("node-hid").setDriverType?.("hidraw");
   } catch {
     // hidraw selection is best-effort; libusb also works once udev rules are right.
