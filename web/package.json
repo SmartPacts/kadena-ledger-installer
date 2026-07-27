@@ -1,0 +1,12 @@
+{
+  "name": "@smartpacts/kadena-ledger-loader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-capable loader for the Kadena Ledger app. Transport-agnostic port of the parts of ledgerblue this one app needs.",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@noble/curves": "^1.9.0",
+    "@noble/hashes": "^1.8.0"
+  }
+}
