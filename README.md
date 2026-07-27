@@ -13,7 +13,7 @@ help you — [here is why](docs/DEVICE-SUPPORT.md), and what is happening about 
 You will need:
 
 - a **Ledger Nano S Plus**, with its PIN, and the USB cable it came with
-- a computer running macOS, Windows or Linux
+- a computer running **Linux** (see below)
 - about five minutes
 
 You will **not** need your recovery phrase. Nothing here ever asks for it. If any
@@ -22,18 +22,25 @@ exception — including anything claiming to be us.
 
 ---
 
+## Which computers this runs on
+
+**Linux only, for now.** That is a statement about testing, not about difficulty.
+
+macOS and Windows versions are written and included in this repository, but **nobody has
+yet run them against a real Ledger**, so they are not published as releases. Shipping a
+"just double-click it" promise that we have never watched work would be worse than
+shipping nothing. If you would like to help test them, please
+[say so in an issue](https://github.com/SmartPacts/kadena-ledger-installer/issues).
+
+The Kadena app returning to Ledger Live is what will serve everyone on every platform.
+That is the real fix and it is being worked on — see [Device support](docs/DEVICE-SUPPORT.md).
+
 ## Install it
 
 ### 1. Download
 
 Get **[the latest release](https://github.com/SmartPacts/kadena-ledger-installer/releases/latest)**
-and download the file for your computer:
-
-| Your computer | Download this |
-|---|---|
-| Mac | `Kadena-Ledger-Installer-macOS.zip` |
-| Windows | `Kadena-Ledger-Installer-Windows.zip` |
-| Linux | `Kadena-Ledger-Installer-Linux.zip` |
+and download `Kadena-Ledger-Installer-Linux.zip`.
 
 Unzip it. You will get two files — the installer, and the program it runs. Keep them
 together in the same folder.
@@ -48,27 +55,23 @@ together in the same folder.
 
 ### 3. Run it
 
-**On a Mac** — double-click `Install Kadena on Ledger.command`.
-
-> The first time, macOS will likely refuse and say the developer is unidentified.
-> That is expected: this is a free tool and we do not pay Apple for a signing
-> certificate. To get past it, **right-click** the file, choose **Open**, then click
-> **Open** in the dialog. You only have to do this once.
-
-**On Windows** — double-click `Install Kadena on Ledger.bat`.
-
-> Windows may show a blue "Windows protected your PC" box. Click **More info**, then
-> **Run anyway**. Same reason as above.
-
-**On Linux** — open a terminal in that folder and run:
+Open a terminal in that folder and run:
 
 ```sh
 chmod +x install-kadena-linux.sh
 ./install-kadena-linux.sh
 ```
 
-If your Ledger is not found, run `./install-kadena-linux.sh --install-udev-rules` once,
-then unplug and replug it.
+If your Ledger is not found, run this once, then unplug and replug it:
+
+```sh
+./install-kadena-linux.sh --install-udev-rules
+```
+
+That step matters more than it looks. Linux needs a rule so ordinary programs may reach a
+Ledger over USB, and the rule has to cover **both** the `hidraw` and `usb` subsystems —
+depending on how your Python was built, the tool may talk to either one. A rule covering
+only `hidraw` produces a bare "open failed" that looks like a broken device.
 
 ### 4. Watch your device, and check the hash
 
@@ -154,8 +157,8 @@ repackage the app.
 ## If something goes wrong
 
 Start with **[Troubleshooting](docs/TROUBLESHOOTING.md)**. It covers the common ones:
-device not found, Ledger Live in the way, "not enough space", Python missing, macOS and
-Windows security prompts.
+device not found, Ledger Live holding the connection, USB permissions, "not enough
+space", and a missing Python.
 
 Still stuck? [Open an issue](https://github.com/SmartPacts/kadena-ledger-installer/issues)
 and paste everything the installer printed. Never include your recovery phrase — we will

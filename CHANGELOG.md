@@ -1,12 +1,20 @@
 # Changelog
 
-## 1.0.0 — unreleased
+## 1.0.0
 
 First release. Installs Kadena app **v1.3.0** onto a Ledger Nano S Plus.
 
+**Linux only.** macOS and Windows wrappers are in the repository and lint-clean, but no one
+has run them against real hardware, so they are not published. `build_release.py --all`
+builds them for testing.
+
+Proven end-to-end on a real Nano S Plus (OS 1.6.1): install, on-device hash confirmed
+character-for-character, app reports 1.3.0, derivation deterministic, reinstall-over-existing
+idempotent, and the unanswered-prompt path correctly records the install as unverified.
+
 - One-file Python installer with no dependencies of its own; creates a private
   virtualenv and installs `ledgerblue==0.1.58` there, leaving the system Python alone.
-- Double-clickable wrappers for macOS and Windows, one command on Linux.
+- One command on Linux; double-clickable macOS and Windows wrappers written but unreleased.
 - Verification chain: pinned SHA-256 on the release script, pinned SHA-256 on the
   firmware image extracted from it, version check, and install parameters read out of
   the verified file rather than restated.
@@ -15,7 +23,12 @@ First release. Installs Kadena app **v1.3.0** onto a Ledger Nano S Plus.
 - Explicit device-hash confirmation after install, with instructions to remove the app
   if it does not match.
 - `--dry-run` verifies the download without touching any device.
-- Linux USB permission rules via `--install-udev-rules`.
+- Linux USB permission rules via `--install-udev-rules`, covering **both** the `hidraw`
+  and `usb` subsystems — a hidraw-only rule fails with a bare "open failed" when Python's
+  hidapi is built against the libusb backend.
+- Walks the user through the device screen sequence and names the "Full hash" screen
+  explicitly, distinguishing it from the code identifier, and notes that the manager public
+  key differs on every run.
 
 Pins for this release:
 

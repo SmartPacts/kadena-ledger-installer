@@ -21,10 +21,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 
+# Only the Linux bundle is released. The macOS and Windows wrappers exist and are
+# lint-clean, but no one has run them against a real Ledger, so publishing them would
+# promise something we have not watched work. Pass --all to build them anyway for
+# testing.
 BUNDLES = {
+    "Kadena-Ledger-Installer-Linux": "install-kadena-linux.sh",
+}
+UNRELEASED_BUNDLES = {
     "Kadena-Ledger-Installer-macOS": "Install Kadena on Ledger.command",
     "Kadena-Ledger-Installer-Windows": "Install Kadena on Ledger.bat",
-    "Kadena-Ledger-Installer-Linux": "install-kadena-linux.sh",
 }
 
 EXECUTABLE = 0o755
@@ -44,12 +50,17 @@ def main() -> int:
         capture_output=True, text=True, check=True,
     ).stdout.split()[1]
 
+    bundles = dict(BUNDLES)
+    if "--all" in sys.argv:
+        bundles.update(UNRELEASED_BUNDLES)
+        print("--all: including UNTESTED macOS/Windows bundles (do not publish these)")
+
     print(f"Building kadena-ledger-installer {version}")
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
 
-    for bundle, wrapper in BUNDLES.items():
+    for bundle, wrapper in bundles.items():
         path = DIST / f"{bundle}.zip"
         with zipfile.ZipFile(path, "w") as archive:
             add(archive, ROOT / "kadena_ledger_install.py",

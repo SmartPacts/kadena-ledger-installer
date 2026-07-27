@@ -27,40 +27,10 @@ Work through these in order — it is almost always one of the first three.
 
 ---
 
-## macOS: "cannot be opened because it is from an unidentified developer"
+## Not on Linux?
 
-Expected. We do not pay for an Apple Developer certificate.
-
-**Right-click** the `.command` file, choose **Open**, then click **Open** in the dialog
-that appears. Once you have done this, double-clicking works normally from then on.
-
-If right-click → Open is not offered, open **System Settings → Privacy & Security**,
-scroll down, and click **Open Anyway** next to the message about the blocked file.
-
-## macOS: "Operation not permitted" or nothing happens on double-click
-
-The executable permission was lost, usually by unzipping with a third-party tool. Open
-Terminal in that folder and run:
-
-```sh
-chmod +x "Install Kadena on Ledger.command"
-```
-
-## Windows: "Windows protected your PC"
-
-Expected, same reason. Click **More info**, then **Run anyway**.
-
-## Windows: "Python is not installed"
-
-The easiest fix on Windows 10 or 11 — open Terminal from the Start menu and run:
-
-```
-winget install Python.Python.3.12
-```
-
-Then double-click the installer again. If you install from
-[python.org](https://www.python.org/downloads/) instead, make sure you tick **"Add
-python.exe to PATH"** on the first screen, or Windows will not find it afterwards.
+macOS and Windows versions exist in the repository but are not released yet, because
+nobody has run them against real hardware. See the README.
 
 ## Linux: "Python 3 is installed but is missing the venv component"
 
