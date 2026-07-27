@@ -1,0 +1,60 @@
+name: I had a problem installing
+description: Something went wrong while installing the Kadena app on a Ledger.
+labels: [install-problem]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sorry it did not work. A few details will let us sort it out quickly.
+
+        **Never post your 24-word recovery phrase.** Not here, not anywhere, not to
+        anyone claiming to be support. Nothing in this repository ever needs it.
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Which Ledger do you have?
+      options:
+        - Nano S Plus
+        - Nano X
+        - Stax
+        - Flex
+        - Nano S (the older, smaller one)
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Which computer?
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: What you did, and what the computer or the device showed instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What the installer printed
+      description: Copy and paste everything from the window. It is safe to share.
+      render: text
+
+  - type: checkboxes
+    id: basics
+    attributes:
+      label: Already tried
+      options:
+        - label: Ledger Live was fully closed, not just minimised
+        - label: The Ledger was unlocked with its PIN and on the home screen
+        - label: Plugged in directly, not through a hub, dock or monitor
