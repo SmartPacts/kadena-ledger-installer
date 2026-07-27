@@ -79,15 +79,13 @@ Your Ledger will ask you to approve the installation, and will warn you that thi
 not reviewed by Ledger — **that warning is correct and expected**, because the app is not
 in their catalogue yet.
 
-Step through the screens with the right-hand button. They come in this order, and the
-**fifth** one is the one you care about:
+Step through the screens with the right-hand button and read them. Among them you will
+see a **Full hash** screen — that is the one that matters. There is also a **Code
+identifier** screen showing a different value, and a **Manager public key** which is
+different on every run (normal, not a warning sign).
 
-1. "Allow unknown manager?" — approve
-2. Manager public key — **this is different every run; that is normal**
-3. App name and version — Kadena, 1.3.0
-4. Code identifier — a different hash, not the one you are checking
-5. **Full hash** — **the one that matters**
-6. "Install app Kadena?" — approve only after reading screen 5
+Read the labels rather than counting screens: the order is not something we can promise,
+and pointing you at the wrong one would be worse than saying nothing.
 
 The Full hash must read exactly:
 

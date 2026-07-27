@@ -4,14 +4,22 @@ There is exactly one check that matters, and it takes about a minute.
 
 ## The check
 
-While installing, your device steps through several screens. They arrive in this order:
+While installing, your device shows several screens. Step through them with the
+right-hand button and read them — do not click past them. Among them:
 
-1. **"Allow unknown manager?"** — approve
-2. **Manager public key** — see the warning below
-3. **App name and version** — should say Kadena, 1.3.0
-4. **Code identifier** — a different hash; **not** the one you are checking
-5. **Full hash** — **this is the one that matters**
-6. **"Install app Kadena?"** — approve only after you have read screen 5
+| Screen | What it is |
+|---|---|
+| **Full hash** | **The one that matters.** This is what you compare. |
+| Code identifier | A different hash. Not the one you are checking. |
+| Manager public key | Different on every run. Normal — see below. |
+| App name and version | Should read Kadena, 1.3.0. |
+
+We deliberately do not tell you which position these appear in. An earlier version of
+this page numbered them and pointed at "the fifth screen"; that order was never verified
+and appears to have been wrong, which would send you to the wrong screen for the only
+check that counts. Firmware is also free to reorder them. Read the labels.
+
+Approve the installation only after you have read the **Full hash** screen.
 
 For Kadena app **v1.3.0**, the Full hash must read exactly:
 
@@ -32,7 +40,7 @@ If it matches, the correct app is on your device. If it differs anywhere at all,
 installation on the device and
 [report it](https://github.com/SmartPacts/kadena-ledger-installer/issues).
 
-> **The manager public key changes every single time.** Screen 2 shows a different value on
+> **The manager public key changes every single time.** It shows a different value on
 > every run, because a fresh one-time key is generated for each installation session. That is
 > normal and is **not** a sign of tampering. Only the Full hash must stay constant.
 >

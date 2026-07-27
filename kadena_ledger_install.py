@@ -35,7 +35,7 @@ from pathlib import Path
 # Values come from the SHA256SUMS.txt published with the app release.
 # --------------------------------------------------------------------------------------
 
-INSTALLER_VERSION = "1.0.0"
+INSTALLER_VERSION = "1.0.1"
 
 APP_REPO = "SmartPacts/app-kadena"
 APP_VERSION = "1.3.0"
@@ -531,29 +531,26 @@ def hash_in_blocks(digest: str, per_line: int = 4) -> str:
     )
 
 
-DEVICE_SCREENS = [
-    ('"Allow unknown manager?"', "approve", False),
-    ("Manager public key", "see the note below", False),
-    ("App name and version", f"should say Kadena, {APP_VERSION}", False),
-    ("Code identifier", "NOT the one you are checking", False),
-    ("Full hash", "THIS IS THE ONE THAT MATTERS", True),
-    ('"Install app Kadena?"', "approve only after you have read screen 5", False),
-]
+SCREEN_FULL_HASH = "Full hash"
+SCREEN_CODE_ID = "Code identifier"
 
 
-def screen_list() -> str:
-    """Render the device-screen walkthrough, padded on the plain text.
+def screen_guidance() -> str:
+    """Explain which screen to read WITHOUT asserting a position in the sequence.
 
-    Padding has to be computed from the uncoloured label — measuring a string that
-    already contains escape codes silently misaligns the whole block.
+    An earlier version numbered the screens and told people to look at the fifth. That
+    order was never verified, and observation suggested it was wrong -- which would send
+    someone to the wrong screen for the one check that matters. Firmware is free to
+    reorder them too. Naming the screen is reliable; counting to it is not.
     """
-    width = max(len(label) for label, _, _ in DEVICE_SCREENS)
-    lines = []
-    for n, (label, note, emphasise) in enumerate(DEVICE_SCREENS, 1):
-        pad = " " * (width - len(label))
-        text, hint = (_c("1", label), _c("1", note)) if emphasise else (label, note)
-        lines.append(f"  {n}. {text}{pad}  ->  {hint}")
-    return "\n".join(lines)
+    return "\n".join(
+        [
+            "  - " + _c("1", SCREEN_FULL_HASH) + "  <- " + _c("1", "THIS IS THE ONE THAT MATTERS"),
+            "  - " + SCREEN_CODE_ID + "  <- a DIFFERENT value; not the one you are checking",
+            "  - Manager public key  <- different on every run; not a warning sign",
+            "  - App name and version  <- should say Kadena, " + APP_VERSION,
+        ]
+    )
 
 
 def show_what_will_happen() -> None:
@@ -562,12 +559,14 @@ def show_what_will_happen() -> None:
         f"""
 About to install the Kadena app, version {APP_VERSION}, onto a {SUPPORTED_DEVICE_NAME}.
 
-Your device will now show a series of screens. Step through them with the right-hand
-button. THEY ARRIVE IN THIS ORDER:
+Your device will now show several screens. Step through them with the right-hand
+button and READ them -- do not click past them. Among them:
 
-{screen_list()}
+{screen_guidance()}
 
-{_c('1', 'The Full hash on screen 5 must read exactly:')}
+Approve the installation only after you have read the "Full hash" screen.
+
+{_c('1', 'The "Full hash" screen must read exactly:')}
 
 {_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
 
@@ -619,7 +618,7 @@ The "Full hash" screen on your device should have read exactly:
 
 {_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
 
-Not the "Code identifier" screen, and not the manager public key — the Full hash.
+Not the "Code identifier" screen, and not the manager public key — the "Full hash".
 """.rstrip(),
     )
     print(

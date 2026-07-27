@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1
+
+Documentation correctness only — no change to what is installed or verified.
+
+- **Stop telling people the Full hash is "the fifth screen".** That order was never
+  verified and observation on real hardware suggested it was wrong, which would have sent
+  someone to the wrong screen for the one check that matters. The guidance now names the
+  screens and says to read the labels; firmware is free to reorder them.
+- Say plainly that the "Code identifier" screen is a different value, and that the manager
+  public key differs on every run and is not a warning sign.
+
+
 ## 1.0.0
 
 First release. Installs Kadena app **v1.3.0** onto a Ledger Nano S Plus.
