@@ -20,7 +20,7 @@ const TYPES = {
   ".hex": "text/plain; charset=utf-8",
 };
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
   const path = decodeURIComponent(new URL(request.url ?? "/", "http://x").pathname);
   const relative = normalize(path === "/" ? "index.html" : path.replace(/^\/+/, ""));
   if (relative.startsWith("..")) {
@@ -37,9 +37,37 @@ createServer(async (request, response) => {
   } catch {
     response.writeHead(404).end("not found");
   }
-}).listen(PORT, () => {
-  console.log(`\n  Demo installer: http://localhost:${PORT}/\n`);
+});
+
+function ready() {
+  // Read the port actually bound. Reporting the one we asked for was wrong after a
+  // fallback: it announced a port nothing was listening on.
+  const { port } = server.address();
+  console.log(`\n  Demo installer: http://localhost:${port}/\n`);
   console.log("  Open it in Chrome, Edge or Brave.");
   console.log("  The Ledger must be attached to THIS machine's USB — if it is currently");
   console.log("  forwarded into WSL, detach it first so the browser's OS can see it.\n");
-});
+}
+
+/**
+ * Try a few ports rather than dying on a stack trace. A leftover server from an earlier
+ * run is the normal cause, and "address already in use" plus a Node backtrace is a poor
+ * way to say "something is already serving this".
+ */
+function listen(port, attemptsLeft) {
+  server.once("error", (error) => {
+    if (error.code !== "EADDRINUSE") throw error;
+    if (attemptsLeft === 0) {
+      console.error(`\n  Ports ${PORT}-${port} are all in use.`);
+      console.error("  Another copy of this server is probably still running:");
+      console.error("    pkill -f serve-demo\n");
+      process.exit(1);
+    }
+    console.log(`  port ${port} is busy, trying ${port + 1}`);
+    listen(port + 1, attemptsLeft - 1);
+  });
+  server.listen(port);
+}
+
+server.on("listening", ready);
+listen(PORT, 5);
