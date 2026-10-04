@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.2
+
+Installs Kadena app **v1.3.1** (the security patch release) instead of v1.3.0.
+
+- New pins, taken from the `SHA256SUMS.txt` published with app v1.3.1: the release script,
+  the firmware image, and the Full hash the device shows
+  (`726078b6269fdb4ef9a70e28c66d7a00ef9f94a0f4a5c7adac11f95fc3cd814a`).
+- Install parameters are unchanged from v1.3.0.
+- App v1.3.1 was installed and its Full hash confirmed character-for-character on real
+  Nano S Plus devices with the release script this installer verifies and runs. This
+  installer version itself was checked by its tests and a dry run against the published
+  release, not by a fresh hardware run.
+
 ## 1.0.1
 
 Documentation correctness only — no change to what is installed or verified.

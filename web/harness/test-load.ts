@@ -21,7 +21,7 @@ import type { Transport } from "../src/transport.ts";
 const TARGET_ID = 0x33100004;
 const APP_NAME = "Kadena";
 const EXPECTED_DEVICE_HASH =
-  "068f376be6115e1769952fabb61020ae5070867c9b2299c259f6947c5b5ce1db";
+  "726078b6269fdb4ef9a70e28c66d7a00ef9f94a0f4a5c7adac11f95fc3cd814a";
 
 const LOAD_OPTIONS = { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 };
 

@@ -16,12 +16,12 @@ import { requestWebHidTransport } from "../src/webhid-transport.ts";
 import { hex as toHex } from "../src/crypto.ts";
 import type { Transport } from "../src/transport.ts";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 const APP_NAME = "Kadena";
 const APP_HEX_URL = "./app.hex";
-const APP_HEX_SHA256 = "636c396aa334aa835d4a99379fd30bcdcae0403ee6a21f63e91a64d5b2b80daa";
+const APP_HEX_SHA256 = "489f4797dba993ed73413efc940e4d7e87f03f908bfd153e2e78d5fc3fbf9a7e";
 const EXPECTED_DEVICE_HASH =
-  "068f376be6115e1769952fabb61020ae5070867c9b2299c259f6947c5b5ce1db";
+  "726078b6269fdb4ef9a70e28c66d7a00ef9f94a0f4a5c7adac11f95fc3cd814a";
 const TARGET_ID = 0x33100004;
 const LOAD_OPTIONS = { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 };
 

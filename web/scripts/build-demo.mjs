@@ -16,9 +16,9 @@ import { mkdir, copyFile, writeFile, readFile } from "node:fs/promises";
 const ROOT = new URL("..", import.meta.url);
 const DIST = new URL("demo/dist/", ROOT);
 
-const APP_RELEASE_TAG = "v1.3.0";
+const APP_RELEASE_TAG = "v1.3.1";
 const APP_HEX_URL = `https://github.com/SmartPacts/app-kadena/releases/download/${APP_RELEASE_TAG}/app.hex`;
-const APP_HEX_SHA256 = "636c396aa334aa835d4a99379fd30bcdcae0403ee6a21f63e91a64d5b2b80daa";
+const APP_HEX_SHA256 = "489f4797dba993ed73413efc940e4d7e87f03f908bfd153e2e78d5fc3fbf9a7e";
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
