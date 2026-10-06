@@ -34,9 +34,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Dry run against the published release
-        # Fails loudly if the upstream release asset ever changes under a published tag.
-        run: python kadena_ledger_install.py --dry-run
+      - name: Dry run against every pinned release
+        # No Ledger is attached to the runner, so the dry run downloads and verifies EVERY
+        # pinned release (one per supported Ledger OS series). Fails loudly if an upstream
+        # asset ever changes under a published tag, or if a pinned release is not published.
+        # The second half fails unless each release was actually verified: a run that
+        # checked nothing must not pass.
+        shell: bash
+        run: |
+          set +e
+          python kadena_ledger_install.py --dry-run > dry-run.log 2>&1
+          status=$?
+          set -e
+          cat dry-run.log
+          test "$status" -eq 0
+          python - <<'EOF'
+          import kadena_ledger_install as k
+          log = open("dry-run.log", encoding="utf-8").read()
+          missing = [
+              r.release_tag for r in k.RELEASES.values()
+              if f"Kadena app {r.app_version} (for Ledger OS {r.os_label}) shows this Full hash" not in log
+          ]
+          assert k.RELEASES and not missing, f"not verified: {missing}"
+          print(f"verified all {len(k.RELEASES)} pinned releases")
+          EOF
 
   shell:
     name: Shell wrappers
