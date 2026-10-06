@@ -27,35 +27,77 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 # --------------------------------------------------------------------------------------
-# Pinned release. Everything this program installs is fixed here, at this version.
+# Pinned releases. Everything this program installs is fixed here, at this version.
+#
+# Which release fits is decided by the device's OS, not by us: Ledger's OS refuses an app
+# built for a different API level. OS 1.6.x refuses apps built for API 27, and OS 1.7.x
+# refuses apps built for API 26. So there is one pinned release per supported OS series,
+# and the device's own OS version picks between them. An OS series not listed here is
+# refused, never guessed at.
+#
+# Values come from the SHA256SUMS.txt published with each app release.
 # A new Kadena app release means a new release of THIS installer, with new pins.
-# Values come from the SHA256SUMS.txt published with the app release.
 # --------------------------------------------------------------------------------------
 
-INSTALLER_VERSION = "1.0.4"
+INSTALLER_VERSION = "1.1.0"
 
 APP_REPO = "SmartPacts/app-kadena"
-APP_VERSION = "1.3.3"
-APP_RELEASE_TAG = "v1.3.3"
-APP_RELEASE_URL = f"https://github.com/{APP_REPO}/releases/tag/{APP_RELEASE_TAG}"
+APP_REPO_URL = f"https://github.com/{APP_REPO}"
+INSTALLER_RELEASES_URL = "https://github.com/SmartPacts/kadena-ledger-installer/releases"
 
-# The official installer script published with the release. We do not reimplement it —
+# The official installer script published with each release. We do not reimplement it —
 # we verify it, read the install parameters and firmware image straight out of it, and
 # run exactly those. That way our install can never drift from the one tested on hardware.
 INSTALLER_ASSET = "installer_nanos_plus.sh"
-INSTALLER_ASSET_URL = (
-    f"https://github.com/{APP_REPO}/releases/download/{APP_RELEASE_TAG}/{INSTALLER_ASSET}"
-)
-INSTALLER_ASSET_SHA256 = "08efa6c91eb517fec9d84bdbd79963715c176629451bcd7c687e03f0d3d6930e"
 
-# The firmware image extracted from that script, byte-identical to the release's app.hex.
-APP_HEX_SHA256 = "63e492e9c8cb16776f1b22e1a17d7356e57b54cd32e97e501a488ab158766236"
 
-# What the Ledger will display on its own screen while installing. THE check that matters.
-EXPECTED_DEVICE_HASH = "5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4"
+@dataclass(frozen=True)
+class Release:
+    os_series: tuple[int, int]   # Nano S Plus OS major.minor this release is built for
+    api_level: int               # the API level that OS series accepts
+    app_version: str
+    release_tag: str
+    installer_sha256: str        # SHA-256 of installer_nanos_plus.sh
+    app_hex_sha256: str          # SHA-256 of the firmware image extracted from it
+    device_hash: str             # what the Ledger shows as "Full hash". THE check that matters.
+
+    @property
+    def os_label(self) -> str:
+        return f"{self.os_series[0]}.{self.os_series[1]}.x"
+
+    @property
+    def release_url(self) -> str:
+        return f"{APP_REPO_URL}/releases/tag/{self.release_tag}"
+
+    @property
+    def installer_url(self) -> str:
+        return f"{APP_REPO_URL}/releases/download/{self.release_tag}/{INSTALLER_ASSET}"
+
+
+RELEASES: dict[tuple[int, int], Release] = {
+    (1, 6): Release(
+        os_series=(1, 6),
+        api_level=26,
+        app_version="1.3.3",
+        release_tag="v1.3.3",
+        installer_sha256="08efa6c91eb517fec9d84bdbd79963715c176629451bcd7c687e03f0d3d6930e",
+        app_hex_sha256="63e492e9c8cb16776f1b22e1a17d7356e57b54cd32e97e501a488ab158766236",
+        device_hash="5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4",
+    ),
+    (1, 7): Release(
+        os_series=(1, 7),
+        api_level=27,
+        app_version="1.3.4",
+        release_tag="v1.3.4",
+        installer_sha256="4bdae2860d578ace031941bbfba613602ca19a365a9c4bab50e556c126a4bee9",
+        app_hex_sha256="d18f6bc0e7c9e56d6124d14866decf6c572b438f47033e3377240acb7eb2cffd",
+        device_hash="03b75bacb5f651c27c27adcc4be525c4bc9f554797a39555ee7dbdc2f69d9d85",
+    ),
+}
 
 # Ledger's own loader library, pinned to the version this app release was proven with.
 LEDGERBLUE_VERSION = "0.1.58"
@@ -262,8 +304,14 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def fetch_installer(dest: Path, local: Path | None) -> Path:
+def _download(url: str, target: Path) -> None:
+    with urllib.request.urlopen(url, timeout=120) as response:
+        target.write_bytes(response.read())
+
+
+def fetch_installer(release: Release, dest: Path, local: Path | None) -> Path:
     """Get the official release script, then prove it is the exact expected file."""
+    dest.mkdir(parents=True, exist_ok=True)
     target = dest / INSTALLER_ASSET
 
     if local is not None:
@@ -272,35 +320,38 @@ def fetch_installer(dest: Path, local: Path | None) -> Path:
         shutil.copyfile(local, target)
         info(f"Using the local file you provided: {local}")
     else:
-        info(f"Downloading the official Kadena app {APP_VERSION} release...")
-        info(f"from {INSTALLER_ASSET_URL}")
+        info(f"Downloading the official Kadena app {release.app_version} release...")
+        info(f"from {release.installer_url}")
         try:
-            with urllib.request.urlopen(INSTALLER_ASSET_URL, timeout=120) as response:
-                target.write_bytes(response.read())
+            _download(release.installer_url, target)
         except urllib.error.URLError as exc:
             raise Abort(
                 "Could not download the release. Check your internet connection.\n"
-                f"You can also download it yourself from:\n  {APP_RELEASE_URL}\n"
+                f"You can also download it yourself from:\n  {release.release_url}\n"
                 f"then re-run this with:  --installer /path/to/{INSTALLER_ASSET}\n"
                 f"\nOriginal error: {exc}"
             ) from exc
 
     actual = sha256_file(target)
-    if actual != INSTALLER_ASSET_SHA256:
+    if actual != release.installer_sha256:
         raise Abort(
-            "STOP — the release file is not what it should be.\n\n"
-            f"  expected: {INSTALLER_ASSET_SHA256}\n"
+            f"STOP — the release file is not the Kadena app {release.app_version} release "
+            "it should be.\n\n"
+            f"  expected: {release.installer_sha256}\n"
             f"  actually: {actual}\n\n"
             "Nothing has been sent to your Ledger and nothing will be. Do not install this file.\n"
-            "This means either the download was corrupted, or the file was tampered with.\n"
-            "Try again on a different network; if it happens again, please report it at\n"
+            "This means either the download was corrupted, the file is a different release,\n"
+            "or the file was tampered with. Try again on a different network; if it happens\n"
+            "again, please report it at\n"
             "https://github.com/SmartPacts/kadena-ledger-installer/issues"
         )
     ok(f"Release file checksum matches the published value ({actual[:16]}...).")
     return target
 
 
-def extract_payload(script: Path, dest: Path) -> tuple[Path, list[str], str]:
+def extract_payload(
+    script: Path, dest: Path, release: Release
+) -> tuple[Path, list[str], str]:
     """Read the firmware image and install parameters out of the verified script.
 
     We deliberately do not hand-write these values. Taking them from the file that was
@@ -316,10 +367,10 @@ def extract_payload(script: Path, dest: Path) -> tuple[Path, list[str], str]:
     app_hex.write_bytes(match.group(1) + b"\n")
 
     actual = sha256_file(app_hex)
-    if actual != APP_HEX_SHA256:
+    if actual != release.app_hex_sha256:
         raise Abort(
             "STOP — the app image inside the release file is not what it should be.\n\n"
-            f"  expected: {APP_HEX_SHA256}\n"
+            f"  expected: {release.app_hex_sha256}\n"
             f"  actually: {actual}\n\n"
             "Nothing has been sent to your Ledger. Please report this."
         )
@@ -332,15 +383,16 @@ def extract_payload(script: Path, dest: Path) -> tuple[Path, list[str], str]:
 
     version_match = re.search(rb'\nAPPVERSION="([^"]+)"\n', raw)
     version = version_match.group(1).decode() if version_match else "unknown"
-    if version != APP_VERSION:
+    if version != release.app_version:
         raise Abort(
-            f"The release file says it is version {version}, but this installer is built for "
-            f"{APP_VERSION}. Please download the matching installer."
+            f"The release file says it is version {version}, but this installer expects "
+            f"{release.app_version} for Ledger OS {release.os_label}. Stopping."
         )
 
     # The release script names the image by a relative path; point it at ours.
     params = _replace_filename(params, str(app_hex))
     _assert_expected_target(params)
+    _assert_api_level(params, release)
     ok(f"Install settings read from the release file (Kadena {version}).")
     return app_hex, params, version
 
@@ -376,6 +428,25 @@ def _assert_expected_target(params: list[str]) -> None:
     raise Abort("The release file does not say which device it is for. Stopping.")
 
 
+def _assert_api_level(params: list[str], release: Release) -> None:
+    """Refuse a release built for a different OS generation than the one it was chosen for.
+
+    This is the property the whole OS-to-release table exists for: the device refuses an
+    app whose API level its OS does not accept. Checking it here catches a wrong table
+    entry before the user is walked through an install the device will reject.
+    """
+    for i, value in enumerate(params):
+        if value == "--apiLevel" and i + 1 < len(params):
+            declared = params[i + 1]
+            if declared != str(release.api_level):
+                raise Abort(
+                    f"The release file is built for API level {declared}, but Ledger OS "
+                    f"{release.os_label} needs API level {release.api_level}. Stopping."
+                )
+            return
+    raise Abort("The release file does not say which Ledger OS it is built for. Stopping.")
+
+
 # --------------------------------------------------------------------------------------
 # Device
 # --------------------------------------------------------------------------------------
@@ -392,9 +463,9 @@ try:
 except Exception as exc:
     print("NO_DEVICE " + type(exc).__name__ + ": " + str(exc)); sys.exit(0)
 try:
-    # Dashboard GET_VERSION. First four bytes of the reply are the device target id.
+    # Dashboard GET_VERSION. Read-only. The reply is parsed by the caller.
     reply = dongle.exchange(bytes.fromhex("E001000000"))
-    print("TARGET %08x" % int.from_bytes(reply[:4], "big"))
+    print("REPLY " + bytes(reply).hex())
 except Exception as exc:
     print("PROBE_ERROR " + type(exc).__name__ + ": " + str(exc))
 finally:
@@ -406,7 +477,7 @@ finally:
 
 
 def probe_device(py: Path) -> tuple[str, str]:
-    """Ask the connected Ledger which model it is. Returns (status, detail)."""
+    """Ask the connected Ledger what it is. Returns (status, detail). Read-only."""
     result = subprocess.run(
         [str(py), "-c", DEVICE_PROBE], capture_output=True, text=True, timeout=60
     )
@@ -417,41 +488,133 @@ def probe_device(py: Path) -> tuple[str, str]:
     return head, detail
 
 
-def check_device(py: Path, skip: bool) -> None:
-    if skip:
-        warn("Device check skipped at your request.")
-        return
+def parse_device_info(reply: bytes) -> tuple[int, str]:
+    """Split the dashboard GET_VERSION reply into (target id, OS version).
 
-    status, detail = probe_device(py)
+    Layout: 4 bytes target id, then the secure element (OS) version as a
+    length-prefixed string, then length-prefixed flags and MCU version, which we do not
+    need. A reply too short to hold the version yields an empty version, which
+    select_release refuses.
+    """
+    target = int.from_bytes(reply[:4], "big")
+    if len(reply) < 5 or len(reply) < 5 + reply[4]:
+        return target, ""
+    return target, reply[5:5 + reply[4]].decode("utf-8", errors="replace")
 
-    if status == "TARGET":
-        target = int(detail, 16)
-        if target == SUPPORTED_TARGET_ID:
-            ok(f"Found a {SUPPORTED_DEVICE_NAME}, unlocked and on the home screen.")
-            return
-        if target in KNOWN_UNSUPPORTED:
-            name, reason = KNOWN_UNSUPPORTED[target]
-            raise Abort(
-                f"This is a {name}, and the Kadena app cannot be installed on it this way.\n\n"
-                f"{reason}\n\n"
-                "What you can do instead: wait for the Kadena app to return to Ledger Live. "
-                "That is the only route for your device, and it is the route we are working on.\n"
-                f"Progress: {APP_RELEASE_URL}"
-            )
+
+def identify_device(probe: tuple[str, str]) -> str:
+    """From a probe_device result, make sure a Nano S Plus is connected and return its OS
+    version. Refuse anything else."""
+    status, detail = probe
+
+    if status == "NO_DEVICE":
+        raise Abort(_no_device_help(detail))
+
+    if status == "IMPORT_ERROR":
+        raise Abort(f"Ledger's loader library could not be loaded ({detail}). Please report this.")
+
+    if status != "REPLY":
+        raise Abort(
+            f"Found something, but could not read your Ledger ({status}: {detail}).\n\n"
+            "The usual cause is an app open on the device. Go back to the home screen (the\n"
+            "one that scrolls through your apps), make sure Ledger Live is fully closed, and\n"
+            "run this again.\n\n"
+            "This installer has to read your Ledger's OS version to choose the right app\n"
+            "release, so it stops here rather than guess."
+        )
+
+    try:
+        target, os_version = parse_device_info(bytes.fromhex(detail))
+    except ValueError:
+        raise Abort(f"Your Ledger sent a reply this installer cannot read ({detail!r}). Stopping.")
+
+    if target in KNOWN_UNSUPPORTED:
+        name, reason = KNOWN_UNSUPPORTED[target]
+        raise Abort(
+            f"This is a {name}, and the Kadena app cannot be installed on it this way.\n\n"
+            f"{reason}\n\n"
+            "What you can do instead: wait for the Kadena app to return to Ledger Live. "
+            "That is the only route for your device, and it is the route we are working on.\n"
+            f"Progress: {APP_REPO_URL}"
+        )
+    if target != SUPPORTED_TARGET_ID:
         raise Abort(
             f"Found a Ledger device this installer does not recognise (id 0x{target:08x}).\n"
             f"It only supports the {SUPPORTED_DEVICE_NAME}. Stopping rather than guessing."
         )
 
-    if status == "NO_DEVICE":
-        raise Abort(_no_device_help(detail))
+    ok(f"Found a {SUPPORTED_DEVICE_NAME}, unlocked and on the home screen.")
+    ok(f"It runs Ledger OS {os_version or '(not reported)'}.")
+    return os_version
 
-    warn(f"Could not confirm which Ledger model is connected ({status}: {detail}).")
-    warn("The installation itself will still refuse a device the app does not fit.")
-    if not confirm(
-        f"Continue anyway? Only do this if you are certain you have a {SUPPORTED_DEVICE_NAME}."
-    ):
-        raise Abort("Stopped at your request.")
+
+# --------------------------------------------------------------------------------------
+# Choosing the release. The device's OS decides; an OS version not in the table is
+# refused, because the wrong guess is an install the device rejects at the last step.
+# --------------------------------------------------------------------------------------
+
+_OS_VERSION = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)")  # ASCII only: \d also matches other scripts
+
+
+def _supported_os_text() -> str:
+    return "\n".join(
+        f"  - Ledger OS {r.os_label}  ->  Kadena app {r.app_version}" for r in RELEASES.values()
+    )
+
+
+def select_release(os_version: str) -> Release:
+    """The release built for this OS version, or a plain-language refusal."""
+    match = _OS_VERSION.fullmatch(os_version)
+    if match is None:
+        raise Abort(
+            f"Your Ledger reported its OS version as {os_version!r}, which this installer\n"
+            "cannot read, so it cannot tell which Kadena app release fits it.\n\n"
+            f"This installer supports the {SUPPORTED_DEVICE_NAME} on:\n{_supported_os_text()}\n\n"
+            "It will not guess. Please check for a newer version of this installer:\n"
+            f"  {INSTALLER_RELEASES_URL}"
+        )
+
+    series = (int(match.group(1)), int(match.group(2)))
+    release = RELEASES.get(series)
+    if release is not None:
+        return release
+
+    if series < min(RELEASES):
+        what_to_do = (
+            "Your Ledger's OS is older than any this installer supports. Update it in\n"
+            "Ledger Live (open \"My Ledger\"), then run this again."
+        )
+    else:
+        what_to_do = (
+            "Your Ledger's OS is newer than this installer knows about. Please check for a\n"
+            f"newer version of this installer:\n  {INSTALLER_RELEASES_URL}"
+        )
+    raise Abort(
+        f"Your Ledger runs OS version {os_version}, and this installer has no Kadena app\n"
+        "release for it.\n\n"
+        f"It supports the {SUPPORTED_DEVICE_NAME} on:\n{_supported_os_text()}\n\n"
+        "It will not guess: the device refuses an app built for a different OS version.\n\n"
+        f"{what_to_do}"
+    )
+
+
+def release_for_file(path: Path) -> Release:
+    """Which pinned release a local release script is, by its checksum. Used only when no
+    device was read, so the file itself has to say which release it claims to be."""
+    if not path.is_file():
+        raise Abort(f"The file you passed with --installer does not exist: {path}")
+    actual = sha256_file(path)
+    for release in RELEASES.values():
+        if actual == release.installer_sha256:
+            return release
+    expected = "\n".join(
+        f"  {r.release_tag}: {r.installer_sha256}" for r in RELEASES.values()
+    )
+    raise Abort(
+        "STOP — the file you passed with --installer is not any release this installer "
+        f"knows.\n\n  actually: {actual}\n\nExpected one of:\n{expected}\n\n"
+        "Do not install this file."
+    )
 
 
 def _no_device_help(detail: str) -> str:
@@ -535,7 +698,7 @@ SCREEN_FULL_HASH = "Full hash"
 SCREEN_CODE_ID = "Code identifier"
 
 
-def screen_guidance() -> str:
+def screen_guidance(release: Release) -> str:
     """Explain which screen to read WITHOUT asserting a position in the sequence.
 
     An earlier version numbered the screens and told people to look at the fifth. That
@@ -548,27 +711,28 @@ def screen_guidance() -> str:
             "  - " + _c("1", SCREEN_FULL_HASH) + "  <- " + _c("1", "THIS IS THE ONE THAT MATTERS"),
             "  - " + SCREEN_CODE_ID + "  <- a DIFFERENT value; not the one you are checking",
             "  - Manager public key  <- different on every run; not a warning sign",
-            "  - App name and version  <- should say Kadena, " + APP_VERSION,
+            "  - App name and version  <- should say Kadena, " + release.app_version,
         ]
     )
 
 
-def show_what_will_happen() -> None:
+def show_what_will_happen(release: Release, os_version: str) -> None:
     banner(
         "READ THIS BEFORE YOU CONTINUE",
         f"""
-About to install the Kadena app, version {APP_VERSION}, onto a {SUPPORTED_DEVICE_NAME}.
+About to install the Kadena app, version {release.app_version}, onto a {SUPPORTED_DEVICE_NAME}.
+This is the release built for Ledger OS {release.os_label}; your Ledger runs {os_version}.
 
 Your device will now show several screens. Step through them with the right-hand
 button and READ them -- do not click past them. Among them:
 
-{screen_guidance()}
+{screen_guidance(release)}
 
 Approve the installation only after you have read the "Full hash" screen.
 
 {_c('1', 'The "Full hash" screen must read exactly:')}
 
-{_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
+{_c('1;32', hash_in_blocks(release.device_hash))}
 
 Take your time. The device waits as long as you need, so read every block — not just
 the beginning and the end. Photograph the screen and compare it here if that is easier.
@@ -579,9 +743,9 @@ tell us: https://github.com/SmartPacts/kadena-ledger-installer/issues
 
 Three more things worth knowing:
 
-  - {_c('1', 'The manager public key (screen 2) is DIFFERENT every single time.')} That is
+  - {_c('1', 'The manager public key is DIFFERENT every single time.')} That is
     normal and is not a warning sign: a fresh one-time key is generated for each run.
-    The Full hash is the value that must never change.
+    The Full hash is the value that must match.
   - This app is not yet distributed by Ledger, so your device will warn you that it
     is not a Ledger-reviewed app. That warning is expected and correct.
   - This does not touch your recovery phrase, your PIN, or your device firmware, and
@@ -610,15 +774,15 @@ def run_install(py: Path, params: list[str], workdir: Path) -> None:
         )
 
 
-def confirm_device_hash() -> bool:
+def confirm_device_hash(release: Release) -> bool:
     banner(
         "LAST STEP - AND THE ONLY ONE THAT REALLY MATTERS",
         f"""
 The "Full hash" screen on your device should have read exactly:
 
-{_c('1;32', hash_in_blocks(EXPECTED_DEVICE_HASH))}
+{_c('1;32', hash_in_blocks(release.device_hash))}
 
-Not the "Code identifier" screen, and not the manager public key — the "Full hash".
+(Kadena app {release.app_version}.) Not the "Code identifier" screen, and not the manager public key — the "Full hash".
 """.rstrip(),
     )
     print(
@@ -674,7 +838,10 @@ and sign a different one, so simply do not use it until this is resolved.
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="kadena-ledger-install",
-        description=f"Install the Kadena app (v{APP_VERSION}) onto a {SUPPORTED_DEVICE_NAME}.",
+        description=(
+            f"Install the Kadena app onto a {SUPPORTED_DEVICE_NAME}. The app release is "
+            "chosen by the OS version your Ledger reports."
+        ),
     )
     parser.add_argument("--version", action="store_true", help="show version information and exit")
     parser.add_argument(
@@ -691,64 +858,103 @@ def main() -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="do everything except talk to the device — verifies the download only",
-    )
-    parser.add_argument(
-        "--skip-device-check",
-        action="store_true",
-        help="do not identify the device first (not recommended)",
+        help=(
+            "install nothing: read which OS a connected Ledger runs and verify the release "
+            "chosen for it, or with no Ledger connected verify every supported release"
+        ),
     )
     parser.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
     args = parser.parse_args()
 
     if args.version:
         print(f"kadena-ledger-install {INSTALLER_VERSION}")
-        print(f"  installs Kadena app : {APP_VERSION} ({APP_RELEASE_TAG})")
-        print(f"  expected device hash: {EXPECTED_DEVICE_HASH}")
-        print(f"  ledgerblue          : {LEDGERBLUE_VERSION}")
+        for release in RELEASES.values():
+            print(
+                f"  Ledger OS {release.os_label}: Kadena app {release.app_version} "
+                f"({release.release_tag}), expected device hash {release.device_hash}"
+            )
+        print(f"  ledgerblue {LEDGERBLUE_VERSION}")
         return 0
 
     if args.install_udev_rules:
         return install_udev_rules()
 
     print(_c("1", f"\nKadena Ledger app installer {INSTALLER_VERSION}"))
-    print(f"Installs Kadena app {APP_VERSION} onto a {SUPPORTED_DEVICE_NAME}.")
+    print(f"Installs the Kadena app onto a {SUPPORTED_DEVICE_NAME}, choosing the release")
+    print("built for the OS version your Ledger runs.")
 
-    total = 4 if args.dry_run else 6
+    total = 5 if args.dry_run else 6
 
     step(1, total, "Checking this computer")
     check_python()
     ok(f"Python {platform.python_version()} on {platform.system()}.")
     py = ensure_venv(data_dir() / "env")
 
+    step(2, total, "Finding your Ledger")
+    os_version: str | None = None
+    probe = probe_device(py)
+    if args.dry_run and probe[0] in ("NO_DEVICE", "IMPORT_ERROR"):
+        # A dry run without a device still has something useful to prove: that every
+        # pinned release is still exactly what was published.
+        if args.installer is not None:
+            releases = [release_for_file(args.installer)]
+            info(f"No Ledger found. Checking the file you provided, which is "
+                 f"{releases[0].release_tag}.")
+        else:
+            releases = list(RELEASES.values())
+            info("No Ledger found, so no OS version was read. Checking every release this")
+            info("installer supports:")
+            for release in releases:
+                info(f"  Ledger OS {release.os_label} -> Kadena app {release.app_version}")
+    else:
+        os_version = identify_device(probe)
+        release = select_release(os_version)
+        releases = [release]
+        ok(f"Ledger OS {os_version} -> Kadena app {release.app_version} "
+           f"(the release built for OS {release.os_label}).")
+
     with tempfile.TemporaryDirectory(prefix="kadena-ledger-") as tmp:
         workdir = Path(tmp)
 
-        step(2, total, "Downloading the official Kadena app release")
-        script = fetch_installer(workdir, args.installer)
+        step(3, total, "Downloading the official Kadena app release")
+        scripts = [
+            fetch_installer(release, workdir / release.release_tag, args.installer)
+            for release in releases
+        ]
 
-        step(3, total, "Checking every byte against the published checksums")
-        _, params, version = extract_payload(script, workdir)
+        step(4, total, "Checking every byte against the published checksums")
+        payloads = [
+            extract_payload(script, script.parent, release)
+            for script, release in zip(scripts, releases)
+        ]
 
         if args.dry_run:
-            step(4, total, "Dry run complete")
+            step(5, total, "Dry run complete")
             ok("The download is genuine and the install settings were read successfully.")
+            if os_version is not None:
+                info(f"Your Ledger runs OS {os_version}, so it would get Kadena app "
+                     f"{releases[0].app_version}.")
+            for release in releases:
+                info(f"Kadena app {release.app_version} (for Ledger OS {release.os_label}) "
+                     "shows this Full hash:")
+                for line in hash_in_blocks(release.device_hash).splitlines():
+                    info(line)
             info("Nothing was sent to any device. Run without --dry-run to install.")
             return 0
 
-        step(4, total, "Finding your Ledger")
-        check_device(py, args.skip_device_check)
+        release = releases[0]
+        _, params, version = payloads[0]
 
         step(5, total, "Confirming with you")
-        show_what_will_happen()
+        show_what_will_happen(release, os_version or "")
         if not args.yes and not confirm("Install the Kadena app now?"):
             print("\nNothing was installed. Nothing changed on your device.")
             return 1
 
         step(6, total, f"Installing Kadena {version}")
-        run_install(py, params, workdir)
+        run_install(py, params, workdir / release.release_tag)
 
-    return 0 if confirm_device_hash() else 2
+    return 0 if confirm_device_hash(release) else 2
 
 
 if __name__ == "__main__":
