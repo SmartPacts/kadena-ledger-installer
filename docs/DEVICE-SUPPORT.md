@@ -17,6 +17,26 @@ Whether an app can be installed outside Ledger Live is decided by the device its
 The installer identifies your device before doing anything, and stops with an
 explanation rather than attempting an install it cannot complete.
 
+## Which Nano S Plus OS versions
+
+Each Ledger OS series only accepts apps built for it: OS 1.7 refuses an app built for
+OS 1.6, and OS 1.6 refuses an app built for OS 1.7. So there is one Kadena app release per
+supported OS series, and the installer reads your device's OS version and picks the
+matching one:
+
+| Your Ledger OS version | Kadena app installed |
+|---|---|
+| 1.6.x | [v1.3.3](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3) |
+| 1.7.x | [v1.3.4](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.4) |
+
+Any other OS version is refused rather than guessed at. If yours is older, update it in
+Ledger Live ("My Ledger") and run the installer again. If yours is newer, check
+[the releases page](https://github.com/SmartPacts/kadena-ledger-installer/releases) for a
+newer version of this installer.
+
+The hash to compare on the device differs between the two releases. Both are listed in
+[VERIFY.md](VERIFY.md).
+
 ## If you have one of the others
 
 The real fix — for every device, including yours — is getting the Kadena app back into

@@ -12,7 +12,8 @@ help you — [here is why](docs/DEVICE-SUPPORT.md), and what is happening about 
 
 You will need:
 
-- a **Ledger Nano S Plus**, with its PIN, and the USB cable it came with
+- a **Ledger Nano S Plus** running Ledger OS 1.6.x or 1.7.x, with its PIN, and the USB
+  cable it came with
 - a computer running **Linux** (see below)
 - about five minutes
 
@@ -73,6 +74,11 @@ Ledger over USB, and the rule has to cover **both** the `hidraw` and `usb` subsy
 depending on how your Python was built, the tool may talk to either one. A rule covering
 only `hidraw` produces a bare "open failed" that looks like a broken device.
 
+The installer first reads which Ledger OS version your device runs and picks the Kadena
+app release built for it — Ledger's OS refuses an app built for a different OS version,
+so this is not a choice you need to make. It tells you which version it found and which
+release it chose.
+
 ### 4. Watch your device, and check the hash
 
 Your Ledger will ask you to approve the installation, and will warn you that this app is
@@ -87,12 +93,25 @@ different on every run (normal, not a warning sign).
 Read the labels rather than counting screens: the order is not something we can promise,
 and pointing you at the wrong one would be worse than saying nothing.
 
-The Full hash must read exactly:
+The Full hash depends on your Ledger's OS version, because each OS version gets its own
+build of the app. The installer prints the right one for your device; it must be the
+matching one in this table:
 
-```
-5de21869 76638313 a881faab e09bbf46
-2df9ef8c 5fae9451 fa22b1a9 9d0efed4
-```
+| Your Ledger OS version | Kadena app installed | The Full hash must read exactly |
+|---|---|---|
+| 1.6.x (for example 1.6.1) | [v1.3.3](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3) | `5de21869 76638313 a881faab e09bbf46 2df9ef8c 5fae9451 fa22b1a9 9d0efed4` |
+| 1.7.x (for example 1.7.0) | [v1.3.4](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.4) | `03b75bac b5f651c2 7c27adcc 4be525c4 bc9f5547 97a39555 ee7dbdc2 f69d9d85` |
+
+Any other OS version is refused, with an explanation: an older one can be updated in
+Ledger Live first, and for a newer one, check
+[the releases page](https://github.com/SmartPacts/kadena-ledger-installer/releases) for a
+newer version of this installer.
+
+To see your OS version on the device yourself: open **Settings** and find the entry called
+**Ledger OS version** (called **Firmware version** on older OS versions). The number shown
+under **Secure Element** is your OS version.
+[Ledger's own instructions](https://support.ledger.com/article/4404389344913-zd) show the
+steps for each device.
 
 Read every block, not just the first and last. The device waits as long as you need.
 This is the one step that genuinely matters, and
@@ -125,8 +144,8 @@ on screen while actually signing a different one.
 Your computer might be compromised; this program might be compromised; the download
 might have been swapped. None of that matters, because the hash is computed and
 displayed by the Ledger itself, using what it actually received. If that number matches
-the one published here and in the
-[app's release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3), the
+the one published here for your OS version and in that release's notes
+([v1.3.3](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3), [v1.3.4](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.4)), the
 correct app is on your device. **Do not skip that comparison.**
 
 **Can this break my Ledger?** No. Installing and removing apps never touches your
@@ -171,22 +190,30 @@ with no dependencies of its own. It:
 
 1. builds a private virtualenv and installs `ledgerblue==0.1.58` into it, leaving your
    system Python untouched;
-2. downloads `installer_nanos_plus.sh` from the pinned app release and checks it against
-   a SHA-256 baked into the source;
-3. extracts the Intel-hex firmware image and the `LOAD_PARAMS` **from that verified
+2. identifies the connected device, refuses anything that is not a Nano S Plus, reads
+   its Ledger OS version, and picks the app release built for that OS series — refusing
+   any OS version it has no release for (`RELEASES` in the source: one entry per
+   supported OS series, each with its own pins);
+3. downloads that release's `installer_nanos_plus.sh` and checks it against the SHA-256
+   baked into the source for it;
+4. extracts the Intel-hex firmware image and the `LOAD_PARAMS` **from that verified
    file** rather than restating them, so the parameters can never drift from the ones
-   proven on hardware, and checks the extracted image against its own pinned SHA-256;
-4. identifies the connected device and refuses anything that is not a Nano S Plus;
+   proven on hardware, checks the extracted image against its own pinned SHA-256, and
+   checks the API level in those parameters is the one that OS series accepts;
 5. runs `ledgerblue.loadApp` with those parameters and makes you confirm the device hash.
 
-Everything is pinned to a single app version. A new app release means a new release of
-this installer.
+Every release is pinned. A new app release, or support for a new OS version, means a new
+release of this installer.
 
 ```sh
-python3 kadena_ledger_install.py --dry-run   # verify the download, touch no device
+python3 kadena_ledger_install.py --dry-run   # install nothing; see below
 python3 kadena_ledger_install.py --version   # show pins
 python3 -m pytest tests/ -q                  # tests
 ```
+
+`--dry-run` installs nothing. With a Ledger connected it reads the OS version (a
+read-only request), says which release it would install, and verifies that release's
+download. With no Ledger connected it verifies the download of every supported release.
 
 - [SECURITY.md](SECURITY.md) — trust model, what is and is not verified, reporting
 - [docs/VERIFY.md](docs/VERIFY.md) — the verification chain in full

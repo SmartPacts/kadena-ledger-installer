@@ -35,15 +35,17 @@ confirm it explicitly after installing.
 
 | Artefact | Control |
 |---|---|
-| `installer_nanos_plus.sh` from the app release | SHA-256 pinned in source; mismatch aborts before any device contact |
-| Firmware image extracted from it | SHA-256 pinned in source; equals the release's published `app.hex` byte for byte |
-| App version string inside the release file | must equal the pinned version |
+| Connected device | probed (read-only) and required to be a Nano S Plus; known-unsupported models are refused with an explanation |
+| Device OS version | selects the release: one pinned release per supported OS series (1.6.x, 1.7.x); any other or unreadable version aborts, never guessed |
+| `installer_nanos_plus.sh` from the chosen release | SHA-256 pinned in source for that release; mismatch aborts before anything is sent to the device |
+| Firmware image extracted from it | SHA-256 pinned in source for that release; equals the release's published `app.hex` byte for byte |
+| App version string inside the release file | must equal the chosen release's version |
 | `LOAD_PARAMS` | parsed out of the verified file rather than restated, so they cannot drift from the parameters tested on hardware |
 | Target device in those parameters | must be `0x33100004` (Nano S Plus) |
-| Connected device | probed and required to be a Nano S Plus; known-unsupported models are refused with an explanation |
+| API level in those parameters | must be the one the device's OS series accepts (26 for 1.6.x, 27 for 1.7.x) |
 
-All pins are for a single app version. A new app release requires a new release of this
-installer, with new pins.
+Every supported OS series has its own pinned release. A new app release, or support for
+a new OS series, requires a new release of this installer, with new pins.
 
 ## Known limits
 

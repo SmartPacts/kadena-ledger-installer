@@ -12,7 +12,7 @@ right-hand button and read them — do not click past them. Among them:
 | **Full hash** | **The one that matters.** This is what you compare. |
 | Code identifier | A different hash. Not the one you are checking. |
 | Manager public key | Different on every run. Normal — see below. |
-| App name and version | Should read Kadena, 1.3.3. |
+| App name and version | Should read Kadena, and the version the installer said it chose: 1.3.3 or 1.3.4. |
 
 We deliberately do not tell you which position these appear in. An earlier version of
 this page numbered them and pointed at "the fifth screen"; that order was never verified
@@ -21,16 +21,40 @@ check that counts. Firmware is also free to reorder them. Read the labels.
 
 Approve the installation only after you have read the **Full hash** screen.
 
-For Kadena app **v1.3.3**, the Full hash must read exactly:
+Which value is right depends on your Ledger's OS version, because each OS version gets its
+own build of the app — Ledger's OS refuses a build made for a different OS version. The
+installer reads the OS version from the device, tells you which release it chose, and prints
+the hash for that release. It must be one of these, and the one for your OS version:
+
+**Ledger OS 1.6.x — Kadena app v1.3.3.** The Full hash must read exactly:
 
 ```
 5de21869 76638313 a881faab e09bbf46
 2df9ef8c 5fae9451 fa22b1a9 9d0efed4
 ```
 
-That is the single value `5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4`,
-split into blocks — comparing 64 unbroken characters on a small screen is how people end up
-checking the first four and giving up.
+That is the single value `5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4`.
+
+**Ledger OS 1.7.x — Kadena app v1.3.4.** The Full hash must read exactly:
+
+```
+03b75bac b5f651c2 7c27adcc 4be525c4
+bc9f5547 97a39555 ee7dbdc2 f69d9d85
+```
+
+That is the single value `03b75bacb5f651c27c27adcc4be525c4bc9f554797a39555ee7dbdc2f69d9d85`.
+
+Each is split into blocks — comparing 64 unbroken characters on a small screen is how people
+end up checking the first four and giving up.
+
+If the hash on your device matches the *other* row, the wrong release reached it: reject
+the installation and report it.
+
+To see your OS version on the device yourself: open **Settings** and find **Ledger OS
+version** (called **Firmware version** on older OS versions); the number under **Secure
+Element** is the one that counts.
+[Ledger's own instructions](https://support.ledger.com/article/4404389344913-zd) show the
+steps for each device.
 
 Read every block, not only the start and the end. The device waits as long as you need;
 there is no timeout on that screen. Photographing it and comparing at your desk is a
@@ -68,15 +92,15 @@ else is convenience.
 
 ## Where the number comes from
 
-The same value is published in three independent places. They should all agree:
+Each value is published in three independent places. They should all agree:
 
 1. this page;
-2. the [app release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3),
-   in the "Device hashes" table;
+2. that release's notes — [v1.3.3](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3) or
+   [v1.3.4](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.4) — in the "Device hashes" table;
 3. `SHA256SUMS.txt`, attached to that same release.
 
-It is also reproducible: the app builds deterministically, so anyone who builds
-v1.3.3 from source with the same Ledger SDK gets a binary with this hash. You do not
+It is also reproducible: the app builds deterministically, so anyone who builds a
+release from source with the same Ledger SDK gets a binary with that release's hash. You do not
 have to trust that we compiled it honestly — you can check.
 
 ## What the installer verifies on your behalf
@@ -86,13 +110,14 @@ stale files and casual tampering early, before anything reaches your device.
 
 | Step | Check |
 |---|---|
-| Release script downloaded | SHA-256 equals `08efa6c9…` |
-| Firmware image extracted from it | SHA-256 equals `63e492e9…` (identical to the release's published `app.hex`) |
-| Version declared inside the script | equals `1.3.3` |
-| Install parameters | read out of the verified file, never hand-written, and rejected if they target any device other than a Nano S Plus |
-| Connected device | must identify as a Nano S Plus |
+| Connected device | must identify as a Nano S Plus, and report a Ledger OS version the installer has a release for (1.6.x or 1.7.x); anything else stops here |
+| Release script downloaded | SHA-256 equals `08efa6c9…` (v1.3.3) or `4bdae286…` (v1.3.4), whichever was chosen |
+| Firmware image extracted from it | SHA-256 equals `63e492e9…` (v1.3.3) or `d18f6bc0…` (v1.3.4) — identical to the release's published `app.hex` |
+| Version declared inside the script | equals the chosen release's version |
+| Install parameters | read out of the verified file, never hand-written, and rejected if they target any device other than a Nano S Plus, or an API level the device's OS does not accept |
 
-If any of these fail, the installer stops and nothing is sent to your device.
+If any of these fail, the installer stops and nothing is sent to your device. (Reading the
+model and OS version is a read-only request; nothing is written before every check passes.)
 
 ## Checking the download yourself
 
@@ -105,7 +130,12 @@ shasum -a 256 installer_nanos_plus.sh
 certutil -hashfile installer_nanos_plus.sh SHA256
 ```
 
-Expected: `08efa6c91eb517fec9d84bdbd79963715c176629451bcd7c687e03f0d3d6930e`
+Expected, for the release that matches your Ledger's OS version:
+
+| Ledger OS | Release | `installer_nanos_plus.sh` SHA-256 |
+|---|---|---|
+| 1.6.x | v1.3.3 | `08efa6c91eb517fec9d84bdbd79963715c176629451bcd7c687e03f0d3d6930e` |
+| 1.7.x | v1.3.4 | `4bdae2860d578ace031941bbfba613602ca19a365a9c4bab50e556c126a4bee9` |
 
 ## The limits of this, stated plainly
 

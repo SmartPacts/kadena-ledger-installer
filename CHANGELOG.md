@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.1.0
+
+**The app release is now chosen by your Ledger's OS version.** Ledger released Nano S Plus
+OS 1.7.0, which only accepts apps built for it (API level 27) and refuses the build this
+installer used to install; OS 1.6.x refuses the new build. So the installer now reads the
+OS version from the device before downloading anything, and installs:
+
+| Ledger OS | Kadena app | Full hash shown on the device |
+|---|---|---|
+| 1.6.x | **v1.3.3** (unchanged) | `5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4` |
+| 1.7.x | **v1.3.4** (new) | `03b75bacb5f651c27c27adcc4be525c4bc9f554797a39555ee7dbdc2f69d9d85` |
+
+- Any other OS version, or one the device reports in a form the installer cannot read,
+  is refused with a plain explanation naming the version seen, the versions supported, and
+  what to do. Nothing is guessed.
+- Each release keeps its own pins from its `SHA256SUMS.txt`: release script, firmware
+  image, Full hash. The version, the hash and the instructions shown are those of the
+  release chosen for your device.
+- New check: the API level in the release's install parameters must be the one the
+  device's OS series accepts.
+- `--dry-run` now reads the connected Ledger (read-only), says which OS version it saw and
+  which release it would install, and verifies that release. With no Ledger connected it
+  verifies every supported release.
+- `--version` lists every pinned release.
+- Removed `--skip-device-check`: without the device's OS version there is no safe release
+  to choose.
+- The install screen no longer refers to the manager public key as "screen 2"; screen
+  order is not something this installer asserts.
+- The browser loader (`web/`) chooses the same way, from the same table.
+
+This installer version was checked by its tests and by dry runs against the published
+v1.3.3 release and local copies of the v1.3.4 release files. It has not itself
+been run against a device.
+
 ## 1.0.4
 
 Installs Kadena app **v1.3.3** (static-analysis fixes, no functional change from v1.3.2).
