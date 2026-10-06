@@ -4,11 +4,13 @@
  *
  *   node harness/test-load.ts <path to app.hex>
  *
- * WRITES TO THE DEVICE. It installs the pinned Kadena release, so the device will ask
- * for approval and then display the application hash — which must be checked, exactly
- * as with any other install.
+ * WRITES TO THE DEVICE. It reads the device's OS version, chooses the pinned release
+ * built for it exactly as the page does, and refuses the file unless it is that
+ * release's image. The device will ask for approval and then display the application
+ * hash — which must be checked, exactly as with any other install.
  */
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { openNodeTransport } from "./node-transport.ts";
 import { IntelHex } from "../src/hex.ts";
@@ -17,13 +19,7 @@ import { ManagerSession } from "../src/session.ts";
 import { getDeviceInfo, NotOnDashboardError, quitApp } from "../src/preflight.ts";
 import { hex as toHex } from "../src/crypto.ts";
 import type { Transport } from "../src/transport.ts";
-
-const TARGET_ID = 0x33100004;
-const APP_NAME = "Kadena";
-const EXPECTED_DEVICE_HASH =
-  "5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4";
-
-const LOAD_OPTIONS = { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 };
+import { DEVICE, releaseForOsVersion } from "../src/releases.ts";
 
 const hexPath = process.argv[2];
 if (!hexPath) throw new Error("usage: node harness/test-load.ts <app.hex>");
@@ -45,13 +41,23 @@ try {
 }
 
 console.log(`  device    target 0x${info.targetId.toString(16)}, OS ${info.osVersion}`);
-if (info.targetId !== TARGET_ID) {
+if (info.targetId !== DEVICE.targetId) {
   throw new Error(`unsupported device 0x${info.targetId.toString(16)}`);
 }
+const release = releaseForOsVersion(info.osVersion);
+console.log(`  release   ${release.appReleaseTag} (built for Ledger OS ${release.osSeries}.x)`);
 
 // --- image -------------------------------------------------------------------------
-const image = new IntelHex(readFileSync(hexPath, "utf8"));
-const params = deriveLoadParameters(image, LOAD_OPTIONS);
+const bytes = readFileSync(hexPath);
+const digest = createHash("sha256").update(bytes).digest("hex");
+if (digest !== release.appHexSha256) {
+  throw new Error(
+    `${hexPath} is not the ${release.appReleaseTag} image this device needs\n` +
+      `  expected ${release.appHexSha256}\n  actually ${digest}`,
+  );
+}
+const image = new IntelHex(bytes.toString("utf8"));
+const params = deriveLoadParameters(image, release.loadOptions);
 console.log(
   `  image     ${image.areas.length} area(s), code ${params.codeLength} B, ` +
     `data ${params.dataLength} B, params ${params.installParamsLength} B`,
@@ -60,13 +66,13 @@ console.log(
 // --- install -----------------------------------------------------------------------
 try {
   console.log("\n  Approve the unknown manager on the device...\n");
-  const session = await ManagerSession.open(transport, TARGET_ID);
+  const session = await ManagerSession.open(transport, DEVICE.targetId);
   console.log(`  manager key shown on device: ${toHex(session.managerPublicKey).slice(0, 32)}...`);
 
   const loader = new AppLoader(session);
 
   let lastPercent = -1;
-  await loader.installApp(APP_NAME, image, params, {
+  await loader.installApp(DEVICE.appName, image, params, {
     onDeleted: (existed) =>
       console.log(existed ? "  removed the existing app" : "  no existing app to remove"),
     onProgress: ({ loaded, total }) => {
@@ -80,7 +86,7 @@ try {
     // is on screen while the device shows its own and waits. Printing it afterwards
     // would mean approving first and checking second, which is not a check at all.
     onFinalising: () => {
-      const blocks = EXPECTED_DEVICE_HASH.match(/.{1,8}/g)!;
+      const blocks = release.deviceHash.match(/.{1,8}/g)!;
       console.log("\n  Streaming done. The device is about to show the application");
       console.log("  hash and ask you to approve. It must read:\n");
       console.log(`    ${blocks.slice(0, 4).join(" ")}`);

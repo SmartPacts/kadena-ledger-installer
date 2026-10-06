@@ -15,15 +15,7 @@ import { getDeviceInfo, NotOnDashboardError, quitApp } from "../src/preflight.ts
 import { requestWebHidTransport } from "../src/webhid-transport.ts";
 import { hex as toHex } from "../src/crypto.ts";
 import type { Transport } from "../src/transport.ts";
-
-const APP_VERSION = "1.3.3";
-const APP_NAME = "Kadena";
-const APP_HEX_URL = "./app.hex";
-const APP_HEX_SHA256 = "63e492e9c8cb16776f1b22e1a17d7356e57b54cd32e97e501a488ab158766236";
-const EXPECTED_DEVICE_HASH =
-  "5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4";
-const TARGET_ID = 0x33100004;
-const LOAD_OPTIONS = { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 };
+import { DEVICE, releaseForOsVersion, type Release } from "../src/releases.ts";
 
 const $ = (id: string) => document.getElementById(id)!;
 const show = (id: string, visible = true) => $(id).classList.toggle("hidden", !visible);
@@ -56,17 +48,17 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return toHex(new Uint8Array(digest));
 }
 
-/** Fetch the firmware image and refuse it unless it is byte-for-byte the pinned one. */
-async function loadImage(): Promise<IntelHex> {
-  const response = await fetch(APP_HEX_URL);
+/** Fetch the release's firmware image and refuse it unless it is byte-for-byte the pinned one. */
+async function loadImage(release: Release): Promise<IntelHex> {
+  const response = await fetch(`./${release.appHexFile}`);
   if (!response.ok) throw new Error(`could not download the app image (${response.status})`);
   const bytes = new Uint8Array(await response.arrayBuffer());
 
   const actual = await sha256Hex(bytes);
-  if (actual !== APP_HEX_SHA256) {
+  if (actual !== release.appHexSha256) {
     throw new Error(
       `The app image does not match its published checksum.\n` +
-        `expected ${APP_HEX_SHA256}\nactually ${actual}\n` +
+        `expected ${release.appHexSha256}\nactually ${actual}\n` +
         `Nothing has been sent to your device. Do not continue.`,
     );
   }
@@ -100,28 +92,36 @@ async function connectAndInstall() {
       );
     }
 
-    log(`Ledger Nano S Plus, firmware ${info.osVersion}`, "ok");
-    if (info.targetId !== TARGET_ID) {
+    if (info.targetId !== DEVICE.targetId) {
       throw new Error(
         "This device is not a Nano S Plus. The Kadena app can only be installed this way " +
           "on a Nano S Plus — every other Ledger needs it to come from Ledger Live.",
       );
     }
 
-    const image = await loadImage();
-    const params = deriveLoadParameters(image, LOAD_OPTIONS);
+    // The device's OS decides which release fits; an unknown OS version throws here,
+    // before anything is downloaded or written.
+    const release = releaseForOsVersion(info.osVersion);
+    log(`Ledger Nano S Plus, Ledger OS ${info.osVersion} → Kadena app ${release.appVersion}`, "ok");
+    $("appVersion").textContent =
+      `app version ${release.appVersion}, for Ledger OS ${release.osSeries}.x`;
+    $("chosen").textContent =
+      `Your Ledger runs OS ${info.osVersion}, so it gets Kadena app ${release.appVersion}.`;
+
+    const image = await loadImage(release);
+    const params = deriveLoadParameters(image, release.loadOptions);
 
     // The expected value goes up NOW, before anything is written and before the device
     // asks for anything. It stays visible for the rest of the flow.
-    renderHash($("expected"), EXPECTED_DEVICE_HASH);
+    renderHash($("expected"), release.deviceHash);
     show("verify");
 
     log("approve the unknown manager on your device…", "warn");
-    const session = await ManagerSession.open(transport, TARGET_ID);
+    const session = await ManagerSession.open(transport, DEVICE.targetId);
     log(`manager key: ${toHex(session.managerPublicKey).slice(0, 24)}… (differs every run)`);
 
     const loader = new AppLoader(session);
-    await loader.installApp(APP_NAME, image, params, {
+    await loader.installApp(DEVICE.appName, image, params, {
       onDeleted: (existed) => log(existed ? "removed the previous version" : "no previous version"),
       onProgress: ({ loaded, total }) => setProgress(loaded / total),
       onFinalising: () => {
@@ -133,7 +133,7 @@ async function connectAndInstall() {
       },
     });
 
-    log(`Kadena ${APP_VERSION} installed`, "ok");
+    log(`Kadena ${release.appVersion} installed`, "ok");
     show("confirm");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

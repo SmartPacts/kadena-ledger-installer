@@ -15,8 +15,7 @@
 import { openNodeTransport } from "./node-transport.ts";
 import { ManagerSession } from "../src/session.ts";
 import { hex } from "../src/crypto.ts";
-
-const TARGET_ID = 0x33100004; // Nano S Plus
+import { DEVICE } from "../src/releases.ts";
 
 function kb(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} KB`;
@@ -25,7 +24,7 @@ function kb(bytes: number): string {
 const transport = await openNodeTransport();
 try {
   console.log("Opening a manager session — approve the unknown manager on the device.\n");
-  const session = await ManagerSession.open(transport, TARGET_ID);
+  const session = await ManagerSession.open(transport, DEVICE.targetId);
   console.log("  handshake OK");
   console.log(`  manager public key shown on device: ${hex(session.managerPublicKey)}`);
 

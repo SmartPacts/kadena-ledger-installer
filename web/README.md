@@ -17,6 +17,7 @@ runs under Node for hardware testing and over WebHID in a browser.
 | `src/hex.ts` | Intel HEX parser |
 | `src/loader.ts` | delete, create, stream, commit |
 | `src/preflight.ts` | device identity and the dashboard check |
+| `src/releases.ts` | the pinned releases, one per supported OS series, and the rule that picks one |
 | `harness/` | Node-only; never bundled |
 
 ## Rules this code follows, and why
@@ -44,6 +45,14 @@ JavaScript's bitwise operators wrap negative.
 **libsecp256k1 ECDH is SHA-256 of the compressed shared point**, not the raw point. Using
 the raw point yields a channel that fails much later as an opaque MAC error.
 
+**The device's OS picks the release.** Ledger OS 1.6.x accepts only apps built for API
+level 26 (Kadena v1.3.3) and OS 1.7.x only API level 27 (v1.3.4). The release is chosen
+from the OS version the device reports, after it has been read; any other version is
+refused rather than guessed. So nothing about the release — its version, its image, its
+hash — can be shown before the device is read, and `installKadenaApp` takes a function
+from release to image URL rather than one URL. Each release's image is served under its
+own name (`app-v1.3.3.hex`, `app-v1.3.4.hex`).
+
 **Manager commands need the dashboard.** With an app open the device answers `0x6e00`.
 Users hit this constantly, because opening the app to check it is the natural thing to do
 right after installing.
@@ -57,9 +66,12 @@ reached the device comes from the hash on its screen — nothing here can substi
 ## Testing
 
 ```sh
-node harness/test-hex.ts <app.hex> '<expected json>'   # offline, vs ledgerblue's values
+node harness/test-hex.ts <app.hex> '<expected json>'   # offline, vs ledgerblue's values;
+                                                       # the file must be a pinned image
 node harness/test-channel.ts                           # read-only, needs a device
-node harness/test-load.ts <app.hex>                    # WRITES to the device
+node harness/test-load.ts <app.hex>                    # WRITES to the device; refuses a
+                                                       # file that is not the image for
+                                                       # the device's OS
 ```
 
 The harness borrows a native HID transport from another workspace; set

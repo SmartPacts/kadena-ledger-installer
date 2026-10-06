@@ -5,7 +5,8 @@
  * and a partial sequence has already caused a device to be left with no app at all.
  * Callers supply presentation; this supplies everything that touches the device.
  *
- * The release constants live here, not in the caller. A page that restated the expected
+ * The release constants live in releases.ts, not in the caller, and the release is
+ * chosen here from the OS version the device reports. A page that restated the expected
  * hash could drift from the image it actually serves, and the drift would be invisible
  * until someone compared against a device.
  */
@@ -17,29 +18,26 @@ import { getDeviceInfo, NotOnDashboardError, quitApp } from "./preflight.ts";
 import { requestWebHidTransport } from "./webhid-transport.ts";
 import { hex as toHex } from "./crypto.ts";
 import type { Transport } from "./transport.ts";
+import { DEVICE, releaseForOsVersion, type Release } from "./releases.ts";
 
+export {
+  DEVICE,
+  RELEASES,
+  INSTALLER_RELEASES_URL,
+  releaseForOsVersion,
+  UnsupportedOsError,
+} from "./releases.ts";
+export type { Release, LoadOptions } from "./releases.ts";
 export { NotOnDashboardError } from "./preflight.ts";
 export { StatusError } from "./transport.ts";
 export type { LoadProgress } from "./loader.ts";
 
-/** Everything about the release this build installs. */
-export const RELEASE = {
-  appName: "Kadena",
-  appVersion: "1.3.3",
-  appReleaseTag: "v1.3.3",
-  appReleaseUrl: "https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3",
-  /** SHA-256 of app.hex, checked before the image is parsed. */
-  appHexSha256: "63e492e9c8cb16776f1b22e1a17d7356e57b54cd32e97e501a488ab158766236",
-  /** What the device displays. The only thing that proves what is running. */
-  deviceHash: "5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4",
-  targetId: 0x33100004,
-  deviceName: "Ledger Nano S Plus",
-  loadOptions: { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 },
-} as const;
-
 export interface InstallHooks {
-  /** Device identified. */
-  onDevice?: (info: { osVersion: string; targetId: number }) => void;
+  /**
+   * Device identified and the release for its OS chosen. Show the release's version and
+   * device hash from here on: before this point it is not known which one applies.
+   */
+  onDevice?: (info: { osVersion: string; targetId: number; release: Release }) => void;
   /** The image was fetched and its checksum verified. */
   onImageVerified?: (sha256: string) => void;
   /** The device is about to ask the user to approve an unknown manager. */
@@ -57,7 +55,7 @@ export interface InstallHooks {
 }
 
 /** Split a hash into 8-character blocks for display. Never render it as one long line. */
-export function hashBlocks(digest: string = RELEASE.deviceHash): string[] {
+export function hashBlocks(digest: string): string[] {
   return digest.match(/.{1,8}/g) ?? [];
 }
 
@@ -79,22 +77,26 @@ export class ImageChecksumError extends Error {
 export class UnsupportedDeviceError extends Error {
   constructor(readonly targetId: number) {
     super(
-      `This is not a ${RELEASE.deviceName}. The Kadena app can only be installed this ` +
-        `way on a ${RELEASE.deviceName}; every other Ledger needs it from Ledger Live.`,
+      `This is not a ${DEVICE.deviceName}. The Kadena app can only be installed this ` +
+        `way on a ${DEVICE.deviceName}; every other Ledger needs it from Ledger Live.`,
     );
     this.name = "UnsupportedDeviceError";
   }
 }
 
 /**
- * Prompt for a device and install the pinned release onto it.
+ * Prompt for a device, choose the release built for its OS version, and install it.
+ *
+ * `appHexUrl` maps the chosen release to where its image is served (for example
+ * `(r) => "/ledger/" + r.appHexFile`). The image is refused unless its SHA-256 is that
+ * release's pin. Throws {@link UnsupportedOsError} for an OS version with no release.
  *
  * Throws {@link NotOnDashboardError} if an app is open — the device re-enumerates when
  * it closes, so the caller must ask the user to start again rather than silently
  * reconnecting behind their back.
  */
 export async function installKadenaApp(
-  appHexUrl: string,
+  appHexUrl: (release: Release) => string,
   hooks: InstallHooks = {},
 ): Promise<void> {
   let transport: Transport | null = null;
@@ -112,28 +114,29 @@ export async function installKadenaApp(
       }
       throw error;
     }
-    if (info.targetId !== RELEASE.targetId) throw new UnsupportedDeviceError(info.targetId);
-    hooks.onDevice?.({ osVersion: info.osVersion, targetId: info.targetId });
+    if (info.targetId !== DEVICE.targetId) throw new UnsupportedDeviceError(info.targetId);
+    const release = releaseForOsVersion(info.osVersion);
+    hooks.onDevice?.({ osVersion: info.osVersion, targetId: info.targetId, release });
 
-    const response = await fetch(appHexUrl);
+    const response = await fetch(appHexUrl(release));
     if (!response.ok) {
       throw new Error(`Could not download the application image (${response.status}).`);
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
     const digest = await sha256Hex(bytes);
-    if (digest !== RELEASE.appHexSha256) {
-      throw new ImageChecksumError(RELEASE.appHexSha256, digest);
+    if (digest !== release.appHexSha256) {
+      throw new ImageChecksumError(release.appHexSha256, digest);
     }
     hooks.onImageVerified?.(digest);
 
     const image = new IntelHex(new TextDecoder().decode(bytes));
-    const params = deriveLoadParameters(image, RELEASE.loadOptions);
+    const params = deriveLoadParameters(image, release.loadOptions);
 
     hooks.onApproveManager?.();
-    const session = await ManagerSession.open(transport, RELEASE.targetId);
+    const session = await ManagerSession.open(transport, DEVICE.targetId);
     hooks.onManagerKey?.(toHex(session.managerPublicKey));
 
-    await new AppLoader(session).installApp(RELEASE.appName, image, params, {
+    await new AppLoader(session).installApp(DEVICE.appName, image, params, {
       onDeleted: hooks.onDeleted,
       onProgress: hooks.onProgress,
       onFinalising: hooks.onFinalising,
