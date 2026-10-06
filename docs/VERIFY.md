@@ -12,7 +12,7 @@ right-hand button and read them — do not click past them. Among them:
 | **Full hash** | **The one that matters.** This is what you compare. |
 | Code identifier | A different hash. Not the one you are checking. |
 | Manager public key | Different on every run. Normal — see below. |
-| App name and version | Should read Kadena, 1.3.2. |
+| App name and version | Should read Kadena, 1.3.3. |
 
 We deliberately do not tell you which position these appear in. An earlier version of
 this page numbered them and pointed at "the fifth screen"; that order was never verified
@@ -21,14 +21,14 @@ check that counts. Firmware is also free to reorder them. Read the labels.
 
 Approve the installation only after you have read the **Full hash** screen.
 
-For Kadena app **v1.3.2**, the Full hash must read exactly:
+For Kadena app **v1.3.3**, the Full hash must read exactly:
 
 ```
-0f6f62ce b5f9b841 fbd1b225 3a9d14c2
-21000d8d a2aeb733 c4d70ee3 0888ccc6
+5de21869 76638313 a881faab e09bbf46
+2df9ef8c 5fae9451 fa22b1a9 9d0efed4
 ```
 
-That is the single value `0f6f62ceb5f9b841fbd1b2253a9d14c221000d8da2aeb733c4d70ee30888ccc6`,
+That is the single value `5de2186976638313a881faabe09bbf462df9ef8c5fae9451fa22b1a99d0efed4`,
 split into blocks — comparing 64 unbroken characters on a small screen is how people end up
 checking the first four and giving up.
 
@@ -71,12 +71,12 @@ else is convenience.
 The same value is published in three independent places. They should all agree:
 
 1. this page;
-2. the [app release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.2),
+2. the [app release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3),
    in the "Device hashes" table;
 3. `SHA256SUMS.txt`, attached to that same release.
 
 It is also reproducible: the app builds deterministically, so anyone who builds
-v1.3.2 from source with the same Ledger SDK gets a binary with this hash. You do not
+v1.3.3 from source with the same Ledger SDK gets a binary with this hash. You do not
 have to trust that we compiled it honestly — you can check.
 
 ## What the installer verifies on your behalf
@@ -86,9 +86,9 @@ stale files and casual tampering early, before anything reaches your device.
 
 | Step | Check |
 |---|---|
-| Release script downloaded | SHA-256 equals `db648251…` |
-| Firmware image extracted from it | SHA-256 equals `d8e19ec7…` (identical to the release's published `app.hex`) |
-| Version declared inside the script | equals `1.3.2` |
+| Release script downloaded | SHA-256 equals `08efa6c9…` |
+| Firmware image extracted from it | SHA-256 equals `63e492e9…` (identical to the release's published `app.hex`) |
+| Version declared inside the script | equals `1.3.3` |
 | Install parameters | read out of the verified file, never hand-written, and rejected if they target any device other than a Nano S Plus |
 | Connected device | must identify as a Nano S Plus |
 
@@ -105,7 +105,7 @@ shasum -a 256 installer_nanos_plus.sh
 certutil -hashfile installer_nanos_plus.sh SHA256
 ```
 
-Expected: `db64825187607f718e090fa9a6c47079712845d1a85808d2b702d390a5eaab3a`
+Expected: `08efa6c91eb517fec9d84bdbd79963715c176629451bcd7c687e03f0d3d6930e`
 
 ## The limits of this, stated plainly
 

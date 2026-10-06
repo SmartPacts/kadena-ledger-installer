@@ -90,8 +90,8 @@ and pointing you at the wrong one would be worse than saying nothing.
 The Full hash must read exactly:
 
 ```
-0f6f62ce b5f9b841 fbd1b225 3a9d14c2
-21000d8d a2aeb733 c4d70ee3 0888ccc6
+5de21869 76638313 a881faab e09bbf46
+2df9ef8c 5fae9451 fa22b1a9 9d0efed4
 ```
 
 Read every block, not just the first and last. The device waits as long as you need.
@@ -126,7 +126,7 @@ Your computer might be compromised; this program might be compromised; the downl
 might have been swapped. None of that matters, because the hash is computed and
 displayed by the Ledger itself, using what it actually received. If that number matches
 the one published here and in the
-[app's release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.2), the
+[app's release notes](https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.3), the
 correct app is on your device. **Do not skip that comparison.**
 
 **Can this break my Ledger?** No. Installing and removing apps never touches your
