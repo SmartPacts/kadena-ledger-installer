@@ -25,13 +25,13 @@ export type { LoadProgress } from "./loader.ts";
 /** Everything about the release this build installs. */
 export const RELEASE = {
   appName: "Kadena",
-  appVersion: "1.3.1",
-  appReleaseTag: "v1.3.1",
-  appReleaseUrl: "https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.1",
+  appVersion: "1.3.2",
+  appReleaseTag: "v1.3.2",
+  appReleaseUrl: "https://github.com/SmartPacts/app-kadena/releases/tag/v1.3.2",
   /** SHA-256 of app.hex, checked before the image is parsed. */
-  appHexSha256: "489f4797dba993ed73413efc940e4d7e87f03f908bfd153e2e78d5fc3fbf9a7e",
+  appHexSha256: "d8e19ec77a0de71dd11e35cdbd8bce56c02a5a40740b9dbafd80117fec11f455",
   /** What the device displays. The only thing that proves what is running. */
-  deviceHash: "726078b6269fdb4ef9a70e28c66d7a00ef9f94a0f4a5c7adac11f95fc3cd814a",
+  deviceHash: "0f6f62ceb5f9b841fbd1b2253a9d14c221000d8da2aeb733c4d70ee30888ccc6",
   targetId: 0x33100004,
   deviceName: "Ledger Nano S Plus",
   loadOptions: { apiLevel: 26, dataSize: 16896, installParamsSize: 62, flags: 0 },

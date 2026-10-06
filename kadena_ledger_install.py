@@ -35,11 +35,11 @@ from pathlib import Path
 # Values come from the SHA256SUMS.txt published with the app release.
 # --------------------------------------------------------------------------------------
 
-INSTALLER_VERSION = "1.0.2"
+INSTALLER_VERSION = "1.0.3"
 
 APP_REPO = "SmartPacts/app-kadena"
-APP_VERSION = "1.3.1"
-APP_RELEASE_TAG = "v1.3.1"
+APP_VERSION = "1.3.2"
+APP_RELEASE_TAG = "v1.3.2"
 APP_RELEASE_URL = f"https://github.com/{APP_REPO}/releases/tag/{APP_RELEASE_TAG}"
 
 # The official installer script published with the release. We do not reimplement it —
@@ -49,13 +49,13 @@ INSTALLER_ASSET = "installer_nanos_plus.sh"
 INSTALLER_ASSET_URL = (
     f"https://github.com/{APP_REPO}/releases/download/{APP_RELEASE_TAG}/{INSTALLER_ASSET}"
 )
-INSTALLER_ASSET_SHA256 = "7bf93d95ec936f1158581e245e41908c7f803615df41f80b27d034ce27db3bb9"
+INSTALLER_ASSET_SHA256 = "db64825187607f718e090fa9a6c47079712845d1a85808d2b702d390a5eaab3a"
 
 # The firmware image extracted from that script, byte-identical to the release's app.hex.
-APP_HEX_SHA256 = "489f4797dba993ed73413efc940e4d7e87f03f908bfd153e2e78d5fc3fbf9a7e"
+APP_HEX_SHA256 = "d8e19ec77a0de71dd11e35cdbd8bce56c02a5a40740b9dbafd80117fec11f455"
 
 # What the Ledger will display on its own screen while installing. THE check that matters.
-EXPECTED_DEVICE_HASH = "726078b6269fdb4ef9a70e28c66d7a00ef9f94a0f4a5c7adac11f95fc3cd814a"
+EXPECTED_DEVICE_HASH = "0f6f62ceb5f9b841fbd1b2253a9d14c221000d8da2aeb733c4d70ee30888ccc6"
 
 # Ledger's own loader library, pinned to the version this app release was proven with.
 LEDGERBLUE_VERSION = "0.1.58"
